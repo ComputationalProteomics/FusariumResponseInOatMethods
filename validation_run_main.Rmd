@@ -1,0 +1,1270 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Validation run
+
+* Datasets (all full analysis, batch 1 focused)
+    - Proteios peptides, going through protein rollup
+    - MaxQuant peptides, going through protein rollup
+    - MaxQuant LFQ run
+
+# Load datasets and annotation
+
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(SummarizedExperiment))
+library(grid)
+library(gridExtra)
+library(limma)
+library(PCAtools)
+library(ggsignif)
+
+rdfs <- list()
+
+rdfs[["pt_pep"]] <- read_tsv("../../raw/180910_existing_raw/FeatureReport_normalyzer_nulltona.tsv")
+rdfs[["mq_prot"]] <- read_tsv("../../raw/190814_max_quant/max_quant_intensity.tsv", na="0")
+rdfs[["mq_lfq"]] <- read_tsv("../../raw/190814_max_quant/max_quant_intensity_lfq.tsv", na="0")
+
+rdfs$mq_lfq
+
+ddf <- read_tsv("../../raw/180910_existing_raw/design.tsv")
+ddf_b1 <- ddf %>% filter(batch == 1)
+
+get_adf <- function(se) {
+    se %>% rowData() %>% data.frame()
+}
+
+get_ddf <- function(se) {
+    se %>% colData() %>% data.frame()
+}
+```
+
+# Prepare data
+
+## Prepare clean peptides for Proteios
+
+```{r}
+rdfs$pt_pep$CleanSequence <- gsub("( |,).*", "", rdfs$pt_pep$Peptide.Sequence)
+```
+
+## Arrange ID rows
+
+```{r}
+arrange_ids <- function(ids, delim, collapse_delim) {
+    lapply(
+        strsplit(ids, delim),
+        function(fields) {paste(sort(fields), collapse=collapse_delim)}
+    ) %>% unlist()
+}
+
+rdfs$pt_pep$SortedIDs <- arrange_ids(rdfs$pt_pep$External.IDs, ",", ",")
+rdfs$mq_prot$SortedIDs <- arrange_ids(rdfs$mq_prot$Protein.IDs, ";", ",")
+rdfs$mq_lfq$SortedIDs <- arrange_ids(rdfs$mq_lfq$Protein.IDs, ";", ",")
+
+#rdfs$mq_lfq$SortedIDs
+
+data.frame(unsorted=head(rdfs$pt_pep$External.IDs), sorted=head(rdfs$pt_pep$SortedIDs))
+```
+
+## Clean out reverse- and contamination hits
+
+```{r}
+filter_any_match <- function(rdf, protein_col, delim, pattern) {
+    pattern_matches_list <- lapply(
+        strsplit(rdf[[protein_col]], delim), 
+        function(ids, screen_pat) { 
+            grepl(screen_pat, ids) 
+        }, 
+        screen_pat=pattern
+    )
+    any_match <- lapply(pattern_matches_list, function(patterns) { any(patterns) }) %>% unlist()
+    all_match <- lapply(pattern_matches_list, function(patterns) { all(patterns) }) %>% unlist()
+    message(
+        "Total entries: ", length(any_match), 
+        " All screen match: ", table(all_match)["TRUE"], 
+        " At least one match: ", table(any_match)["TRUE"], 
+        " 1+ match filtered")    
+    rdf[!any_match, ]
+}
+
+rdfs_clean <- list()
+rdfs_clean$pt_pep <- filter_any_match(rdfs$pt_pep, "External.IDs", ",", "^r")
+rdfs_clean$mq_prot <- filter_any_match(rdfs$mq_prot, "Protein.IDs", ",", "^CON_|^REV_")
+rdfs_clean$mq_lfq <- filter_any_match(rdfs$mq_lfq, "Protein.IDs", ",", "^CON_|^REV_")
+```
+
+## Overview numbers
+
+```{r}
+message("Proteios rows: ", nrow(rdfs_clean$pt_pep), " unique peptides: ", length(unique(rdfs_clean$pt_pep$CleanSequence)))
+message("MaxQuant protein rows: ", nrow(rdfs_clean$mq_prot))
+message("MaxQuant LFQ rows: ", nrow(rdfs_clean$mq_lfq))
+```
+
+# Setup summarized experiment objects
+
+```{r}
+ses <- lapply(rdfs_clean, function(rdf, ddf) {
+    sdf <- rdf %>% dplyr::select(ddf$old_sample)
+    adf <- rdf %>% dplyr::select(-one_of(ddf$old_sample))
+    SummarizedExperiment(
+        assays=list(raw=as.matrix(sdf)),
+        rowData=data.frame(adf),
+        colData=data.frame(ddf)
+    )
+}, ddf=ddf)
+
+ses_b1 <- lapply(ses, function(se) {
+    se[, colData(se)$batch == 1]
+})
+```
+
+# Perform normalization
+
+```{r}
+assays(ses_b1$pt_pep)$loess <- NormalyzerDE::performCyclicLoessNormalization(assay(ses_b1$pt_pep))
+assays(ses_b1$mq_prot)$loess <- NormalyzerDE::performCyclicLoessNormalization(assay(ses_b1$mq_prot))
+assays(ses_b1$mq_lfq)$log2 <- log2(assay(ses_b1$mq_lfq))
+
+# mq_lfq_log2 <- cbind(rowData(ses_b1$mq_), assays(ses_b1$mq_lfq)$log2)
+```
+
+# Perform protein rollup
+
+```{r}
+source("utility_scripts.R")
+
+# Inspired by DanteR and Pmart
+generate_protein_dataframe <- function(protein_ids, pep_mat, rollup_func) {
+    
+    unique_proteins <- unique(protein_ids)
+    pep_counts <- list()
+    pep_results <- list()
+    for (protein in unique_proteins) {
+        
+        row_inds <- which(protein_ids == protein)
+        current_peps_only <- pep_mat[row_inds, , drop=FALSE]
+        
+        scaled_peps <- rollup_func(current_peps_only)
+        pep_results[[protein]] <- scaled_peps
+        pep_counts[[protein]] <- nrow(current_peps_only)
+    }
+    
+    annot_df <- data.frame(Protein=unique_proteins)
+    protein_mat <- data.frame(do.call("rbind", pep_results), row.names = NULL) %>% as.matrix()
+    protein_df <- cbind(annot_df, protein_mat)
+    rownames(protein_df) <- NULL
+    protein_df
+}
+
+# Alternatively, execute QPLine from shell
+
+RUN_QPLINE <- TRUE
+
+if (RUN_QPLINE) {
+    
+    dir.create("qpline")
+    # ses_b1$pt_pep %>% get_adf() %>% head()
+    out_peps <- cbind(ses_b1$pt_pep %>% get_adf() %>% dplyr::select(c("SortedIDs", "CleanSequence")),  assays(ses_b1$pt_pep)$loess)
+    write_tsv(out_peps, path="qpline/pt_peps.tsv")
+    write_tsv(ses_b1$pt_pep %>% get_ddf(), path="qpline/pt_peps_ddf.tsv")
+    
+    #python3 ~/src/QPLine/src/QPLine.py -run inferno -protein_header SortedIDs -i pt_peps.tsv -g pt_peps_ddf.tsv -peptide_header CleanSequence -o qpline_out2 --min_overlap 1
+    
+    raw_protein_df <- read_tsv("qpline/qpline_out3/Inferno_Output/pt_peps_RRollup_proteinreport.txt")
+    pep_report_noout_df <- read_tsv("qpline/qpline_out3/Inferno_Output/pt_peps_RRollup_peptides_outliersremoved.txt")
+    pep_report_scaled_df <- read_tsv("qpline/qpline_out3/Inferno_Output/pt_peps_RRollup_peptides_scaled.txt")
+    
+    protein_df <- raw_protein_df %>% dplyr::select(-PepCount, -QPRo)
+    colnames(protein_df) <- c("Protein", colnames(protein_df)[2:ncol(protein_df)])
+    protein_df$Protein <- gsub(";", ",", protein_df$Protein)
+        
+} else {
+
+    protein_df <- generate_protein_dataframe(
+        rowData(ses_b1$pt_pep)$SortedIDs,
+        assays(ses_b1$pt_pep)$loess,
+        rollup_func <- rrollup
+    )
+}
+
+head(protein_df)
+
+ses_b1$pt_prot <- SummarizedExperiment(
+    assays=list(loess=protein_df %>% dplyr::select(-Protein) %>% as.matrix()),
+    rowData=data.frame(protein_df %>% dplyr::select(Protein), drop=FALSE),
+    colData=ddf_b1
+)
+
+ses_b1$pt_prot %>% get_adf() %>% head()
+
+# names(ses_b1)
+
+```
+
+# Calculate statistics
+
+## Assign target statistics SDFs
+
+```{r}
+assays(ses_b1$pt_pep)$target <- assays(ses_b1$pt_pep)$loess
+assays(ses_b1$mq_prot)$target <- assays(ses_b1$mq_prot)$loess
+assays(ses_b1$mq_lfq)$target <- assays(ses_b1$mq_lfq)$log2
+assays(ses_b1$pt_prot)$target <- assays(ses_b1$pt_prot)$loess
+```
+
+## Calculate Limma statistics
+
+```{r}
+library(limma)
+
+setup_contrasts <- function() {
+    my_contrasts <- list(
+        "Ctl_4d"=c("a_4d_c", "b_4d_c"),
+        "Inf_4d"=c("a_4d_i", "b_4d_i"),
+        "Arg_4d"=c("a_4d_i", "a_4d_c"),
+        "Bel_4d"=c("b_4d_i", "b_4d_c")
+    )
+    
+    my_contrasts_parsed <- lapply(my_contrasts, function(contrast) {
+        paste(paste0("comb_short", contrast), collapse="-")
+    }) %>% unlist()
+    
+    my_contrasts_parsed
+}
+my_contrasts_parsed <- setup_contrasts()
+my_contrasts_parsed
+
+model <- as.formula("~0+comb_short")
+model_design <- model.matrix(model, data=ddf_b1)
+se <- ses_b1$pt_pep
+sdf <- assays(ses_b1$pt_prot)$target
+ses_b1_stats <- lapply(ses_b1, function(se, model_design) {
+    sdf <- assays(se)$target
+    fit <- limma::lmFit(sdf, model_design)
+    contrast.matrix <- limma::makeContrasts(contrasts=my_contrasts_parsed, levels=model_design)
+    
+    fit_contrasts <- contrasts.fit(fit, contrast.matrix)
+    fit_bayes <- limma::eBayes(fit_contrasts)
+    limma_tables <- lapply(
+        seq_len(length(colnames(fit_bayes$coefficients))),
+        function(coef) { topTable(fit_bayes, coef=coef, number=Inf, sort.by="none") }
+    )
+    names(limma_tables) <- names(my_contrasts_parsed)
+    combined_limma_tables <- cbind(row_nbr=seq_len(nrow(limma_tables[[1]])), do.call("cbind", limma_tables))
+    
+    rowData(se) <- cbind(rowData(se), combined_limma_tables)
+    se
+}, model_design=model_design)
+```
+
+## Explore top hits
+
+```{r}
+df <- ses_b1_stats$mq_prot %>% rowData() %>% data.frame() # %>% arrange(Ctl_4d.P.Value)
+full_df <- cbind(df, assays(ses_b1_stats$mq_prot)$loess %>% data.frame()) %>% arrange(Ctl_4d.P.Value)
+head(full_df)
+```
+
+
+## Presence / absence analysis
+
+```{r}
+calculate_presence_absence_tables <- function(ddf, sdf, contrasts, sample_col, cond_col, contrast_names=NA, contrast_splitter="-") {
+    
+    split_contrasts <- strsplit2(contrasts, contrast_splitter)
+    split_contrasts_only_name <- gsub(cond_col, "", split_contrasts)
+
+    if (any(is.na(contrast_names))) {
+        contrast_names <- contrasts
+    }
+        
+    # Apply over the different contrasts
+    presence_absence_list <- list()
+    for (contrast_i in seq_len(nrow(split_contrasts_only_name))) {
+
+        samples_high <- ddf %>% 
+            filter(UQ(as.name(cond_col)) %in% split_contrasts_only_name[contrast_i, 1]) %>% dplyr::select(sample_col) %>% unlist(use.names=FALSE)
+        samples_low <- ddf %>% 
+            filter(UQ(as.name(cond_col)) %in% split_contrasts_only_name[contrast_i, 2]) %>% dplyr::select(sample_col) %>% unlist(use.names=FALSE)
+
+        high_has_values <- apply(sdf[, samples_high, drop=FALSE], 1, function(row) { length(na.omit(row)) })
+        low_has_values <- apply(sdf[, samples_low, drop=FALSE], 1, function(row) { length(na.omit(row)) })
+        
+        comb_presence <- as.data.frame(cbind(high_has_values, low_has_values))
+        colnames(comb_presence) <- c("high_c", "low_c")
+        
+        presence_outcome <- apply(comb_presence, 1, function(row, high_count, low_count) {
+            if (row[1] == high_count && row[2] == high_count)   "BOTH_FULL"
+            else if (row[1] > 0 && row[2] > 0)                  "BOTH_PARTIAL"
+            else if (row[1] == 0 && row[2] == 0)                "NONE"
+            else if (row[1] == high_count && row[2] == 0)       "HIGHONLY_FULL"
+            else if (row[1] == 0 && row[2] == low_count)        "LOWONLY_FULL"
+            else if (row[1] > 0 && row[2] == 0)                 "HIGHONLY_PARTIAL"
+            else if (row[1] == 0 && row[2] > 0)                 "LOWONLY_PARTIAL"
+            else stop("Unknown condition, input: ", paste(row, collapse=", "))
+        }, high_count=length(samples_high), low_count=length(samples_low))
+        presence_absence_list[[contrast_names[contrast_i]]] <- cbind(comb_presence, presence=presence_outcome)
+    }
+    
+    # Return data frame containing results from all presence / absence
+    do.call("cbind", presence_absence_list)
+}
+
+# assays(ses_b1_stats$pt_pep)
+# 
+# se <- ses_b1_stats$pt_prot
+# calculate_presence_absence_tables(
+#             se %>% get_ddf(),
+#             assays(se)$target,
+#             c("a_4d_c-b_4d_c", "a_4d_i-b_4d_i", "a_4d_i-a_4d_c", "b_4d_i-b_4d_c"),
+#             "old_sample",
+#             "comb_short",
+#             contrast_names=c("Ctl_4d", "Inf_4d", "Arg_4d", "Bel_4d")
+#         )
+
+ses_b1_stats_pres <- sapply(names(ses_b1_stats), function(se_name, ses) {
+    
+        se <- ses[[se_name]]
+        pres_abs_table <- calculate_presence_absence_tables(
+            se %>% get_ddf(),
+            assays(se)$target,
+            c("a_4d_c-b_4d_c", "a_4d_i-b_4d_i", "a_4d_i-a_4d_c", "b_4d_i-b_4d_c"),
+            "old_sample",
+            "comb_short",
+            contrast_names=c("Ctl_4d", "Inf_4d", "Arg_4d", "Bel_4d")
+        )
+        
+        new_adf <- cbind(rowData(se) %>% data.frame(), pres_abs_table)
+        
+        message("Running for: ", se_name)
+        message("Control")
+        print(table(pres_abs_table$Ctl_4d.presence))
+        message("Infected")
+        print(table(pres_abs_table$Inf_4d.presence))
+        message("Argamak")
+        print(table(pres_abs_table$Arg_4d.presence))
+        message("Belinda")
+        print(table(pres_abs_table$Bel_4d.presence))
+        
+        rowData(se) <- new_adf
+        se
+    }, ses=ses_b1_stats, USE.NAMES=TRUE, simplify=FALSE)
+
+```
+
+# Apply annotations
+
+```{r}
+annotate_rdf <- function(rdf) {
+
+    rdf_annotated_protein_ids_list <- str_split(rdf$SortedIDs, ",")
+    rdf_proteins_long <- tibble(id=seq_along(rdf_annotated_protein_ids_list), Protein=rdf_annotated_protein_ids_list) %>% 
+        unnest() %>% data.frame()
+    
+    protein_annot_df <- rdf_proteins_long %>% left_join(db_df, setNames("QueryID", "Protein"), keep=TRUE)
+    # Retrive unique matches per line, where multiple distinct are column-wise concatenated delimited by a comma    
+    out <- protein_annot_df %>% 
+        group_by(id) %>%
+        group_map(
+            function(df, group_info) {
+                df[, -1] %>%
+                    filter(!is.na(ProteinID)) %>% 
+                    distinct(ProteinID, .keep_all = TRUE) %>%
+                    apply(2, function(col) { paste(col, collapse=",") }) %>%
+                    t() %>%
+                    data.frame()
+            })
+    protein_annot_df_out <- do.call("rbind", out)
+    protein_annot_df_out$ProteinIDFirst <- protein_annot_df_out$ProteinID %>% 
+        as.character() %>% strsplit(",") %>% lapply(function(entries) { entries[1] }) %>% unlist()
+        
+    message("Annotation count distribution - Number of entries with corresponding number matching proteins")
+    print(protein_annot_df_out$ProteinID %>% unlist() %>% unname() %>% as.character() %>% 
+              strsplit(",") %>% lapply(., function(entries) { length(entries) }) %>% unlist() %>% table())
+    
+    protein_annot_df_out
+}
+
+LOAD_ANNOT_CACHE <- TRUE
+
+ses_b1_stats_pres$pt_prot %>% get_adf() %>% head()
+
+if (!LOAD_ANNOT_CACHE) {
+    db_df <- read_tsv("../../analysis/190513_run2/comb_oats.blast6e")
+    db_df$QueryID <- as.character(db_df$QueryID)
+    db_df$Description <- db_df$Description %>% gsub("^\\| ", "", .) %>% gsub(" \\|.*", "", .) %>% gsub("OS=.*", "", .)
+    
+    rowData(ses_b1_stats_pres$pt_prot)$SortedIDs <- rowData(ses_b1_stats_pres$pt_prot)$Protein
+    
+    dir.create("annots_cache")
+    
+    ses_b1_stats_annot <- lapply(names(ses_b1_stats_pres), function(se_name, ses) {
+        print(paste("Processing new entry...", se_name))
+        se <- ses[[se_name]]
+        annot_df <- annotate_rdf(rowData(se) %>% data.frame())
+        new_adf <- cbind(rowData(se) %>% data.frame(), annot_df)
+        rowData(se) <- new_adf
+        write_tsv(new_adf, paste0("annots_cache/", se_name, ".tsv"))
+        se
+    }, ses_b1_stats_pres)
+    names(ses_b1_stats_annot) <- names(ses_b1_stats_pres)
+    
+    # saveRDS(ses_b1_stats_annot, file="ses_b1_stats_annot.rds")
+    
+} else {
+    ses_b1_stats_annot <- sapply(names(ses_b1_stats_pres), function(se_name, ses) {
+        se <- ses[[se_name]]
+        adf_fp <- paste0("annots_cache/", se_name, ".tsv")
+        annot_df <- read_tsv(adf_fp, col_types=cols())
+        new_adf <- cbind(rowData(se) %>% data.frame(), annot_df)
+        rowData(se) <- new_adf
+        se
+    }, ses=ses_b1_stats_pres, USE.NAMES=TRUE, simplify=FALSE)
+    # names(ses_b1_stats_annot) <- names(ses_b1_stats)
+}
+
+```
+
+# Perform enrichments analyses
+
+```{r}
+library(clusterProfiler)
+
+
+do_enrich <- function(sig_hits, universe, enrich_ont, sig_thres) {
+    clusterProfiler::enrichGO(
+        sig_hits,
+        OrgDb = "org.At.tair.db",
+        keyType = "TAIR",
+        universe = universe,
+        ont = enrich_ont,
+        pAdjustMethod = "BH",
+        pvalueCutoff = sig_thres
+    )
+}
+
+contrasts <- list(
+    "Control"="Ctl_4d",
+    "Infected"="Inf_4d",
+    "Argamak"="Arg_4d",
+    "Belinda"="Bel_4d"
+)
+
+prot_sig_thres_val <- 0.1
+enrich_sig_thres_val <- 0.1
+
+
+LOAD_CACHED_GO <- TRUE
+
+if (!LOAD_CACHED_GO) {
+    adf <- ses_b1_stats_annot$pt_prot %>% get_adf()
+    universe <- ses_b1_stats_annot$pt_prot %>% 
+        get_adf() %>% 
+        filter(grepl("^AT\\wG\\d\\d\\d\\d\\d", adf$ProteinIDFirst)) %>%
+        dplyr::select(ProteinIDFirst) %>% 
+        unlist() %>% 
+        unname() %>% 
+        gsub("\\..*", "", .) %>% 
+        unique()
+    
+    all_go_results <- lapply(contrasts, function(contrast, universe) {
+        adf <- ses_b1_stats_annot$pt_prot %>% get_adf()
+        sig_hits <- adf %>% 
+            filter(grepl("^AT\\wG\\d\\d\\d\\d\\d", adf$ProteinIDFirst)) %>%
+            filter(UQ(as.name(paste0(contrast, ".adj.P.Val"))) < prot_sig_thres_val) %>% 
+            dplyr::select(ProteinIDFirst) %>% 
+            unlist() %>% 
+            unname() %>% 
+            gsub("\\..*", "", .) %>%
+            unique()
+        enrich_onts <- list("MF"="MF", "BP"="BP", "CC"="CC")
+        enrichment_results <- lapply(enrich_onts, function(enrich_ont) { 
+            do_enrich(sig_hits, universe, enrich_ont, sig_thres=enrich_sig_thres_val)
+        })
+        
+        enrichment_results
+    }, universe=universe)
+    
+    saveRDS(all_go_results, file="annots_cache/all_go_results.rds")
+    
+} else {
+    all_go_results <- readRDS("annots_cache/all_go_results.rds")
+}
+
+
+names(all_go_results)
+
+all_go_results
+```
+
+# Data inspections
+
+```{r}
+library(venn)
+
+library(PCAtools)
+source("../../CraftOmics/MultivarVis.R")
+source("../../CraftOmics/EvalVis.R")
+```
+
+## Overlap analysis
+
+```{r}
+pt_prot_adf <- ses_b1_stats_annot$pt_prot %>% rowData() %>% data.frame()
+
+get_sig <- function(adf, thres) {
+    adf %>% rowData() %>% data.frame() %>% filter(Ctl_4d.adj.P.Val < thres) %>% dplyr::select(ProteinIDFirst) %>% unlist() %>% unique()
+}
+
+venn(
+    list(
+        PT=ses_b1_stats_annot$pt_prot %>% get_sig(0.1),
+        MQ=ses_b1_stats_annot$mq_prot %>% get_sig(0.1),
+        LFQ=ses_b1_stats_annot$mq_lfq %>% get_sig(0.1)
+    )
+)
+
+out_df <- ses_b1_stats_annot$pt_prot %>% get_adf() %>% arrange(Ctl_4d.P.Value)
+write_tsv(out_df, path = "annotated_out_df.tsv")
+
+write_tsv(ses_b1_stats_annot$mq_lfq %>% get_adf() %>% arrange(Ctl_4d.P.Value), path="annotated_lfq.tsv")
+```
+
+# Quick statistics checks
+
+## Quickly check numbers
+
+```{r}
+out <- lapply(names(ses_b1_stats), function(ses_name, ses) {
+    se <- ses[[ses_name]]
+    ctl_c <- rowData(se) %>% data.frame() %>% filter(Ctl_4d.adj.P.Val < 0.05) %>% nrow()
+    inf_c <- rowData(se) %>% data.frame() %>% filter(Inf_4d.adj.P.Val < 0.05) %>% nrow()
+    arg_c <- rowData(se) %>% data.frame() %>% filter(Arg_4d.adj.P.Val < 0.05) %>% nrow()
+    bel_c <- rowData(se) %>% data.frame() %>% filter(Bel_4d.adj.P.Val < 0.05) %>% nrow()
+    message("FDR < 0.05, Ctl: ", ctl_c, " Inf: ", inf_c, " Arg: ", arg_c, " Bel: ", bel_c, " (", ses_name, ")")
+}, ses=ses_b1_stats)
+```
+
+## Overview visuals
+
+```{r fig.width=12}
+make_grid_plot <- function(ses, visuals_func, main_title="") {
+    do.call(grid.arrange, c(lapply(names(ses), function(se_name, ses) { 
+        se <- ses[[se_name]]
+        adf <- rowData(se) %>% data.frame()
+        ddf <- colData(se) %>% data.frame()
+        sdf <- assays(se)$target
+        visuals_func(adf=adf, ddf=ddf, sdf=sdf, name=se_name)
+    }, ses=ses), top=main_title))
+}
+
+make_grid_plot(ses_b1_stats, function(adf, name, ...) { ggplot(adf, aes(x=Ctl_4d.P.Value)) + geom_histogram(bins=50) + ggtitle(name) })
+
+make_grid_plot(ses_b1_stats, function(sdf, ddf, name, ...) { 
+    sdf_complete <- sdf[complete.cases(sdf), ]
+    pca_obj <- PCAtools::pca(sdf_complete, metadata = ddf, scale = TRUE)
+    PCAtools::biplot(pca_obj, colby="comb_short") + ggtitle(name)
+})
+
+make_grid_plot(ses_b1_stats, function(sdf, ddf, name, ...) { 
+    ddf_d4 <- ddf %>% filter(time == "4d")
+    sdf_d4 <- sdf %>% data.frame() %>% dplyr::select(ddf_d4$old_sample)
+    rownames(ddf_d4) <- colnames(sdf_d4)
+    sdf_complete_d4 <- sdf_d4[complete.cases(sdf_d4), ]
+    pca_obj <- PCAtools::pca(sdf_complete_d4, metadata = ddf_d4, scale = TRUE)
+    PCAtools::biplot(pca_obj, colby="comb_short") + ggtitle(name)
+}, "d4 only")
+
+make_grid_plot(ses_b1_stats, function(sdf, ddf, name, ...) { 
+    mv$dendogram(data_m = sdf, color_levels = ddf$comb_short, title = name)
+})
+
+make_grid_plot(ses_b1_stats, function(sdf, ddf, name, ...) { 
+    ddf_d4 <- ddf %>% filter(time == "4d")
+    sdf_d4 <- sdf %>% data.frame() %>% dplyr::select(ddf_b1$old_sample)
+    mv$dendogram(data_m = sdf_d4, color_levels = ddf_d4$comb_short, title = name)
+})
+
+make_grid_plot(ses_b1_stats, function(sdf, ddf, name, ...) { 
+    ev$sample_dist(data_m = sdf, color_col = ddf$time, title=name)
+})
+
+```
+
+# Setup tables and figures for the report
+
+```{r}
+dir.create("figs")
+gray_blue_colors <- c("#AAAAAA", "#0C81A2")
+```
+
+## Setup tables
+
+```{r}
+
+get_target_fields_adf <- function(raw_adf) {
+    grep_pattern <- paste(c("logFC$", "P.Value$", "adj.P.Val$", "Ctl_4d.AveExpr", "ProteinID", 
+                        "Protein$", "EValue", "Description", "foldDir", "presence$"), collapse="|")
+    
+    target_cols <- colnames(raw_adf)[grepl(grep_pattern, colnames(raw_adf))]
+    dir.create("tables")
+    contrasts <- c("Ctl_4d", "Inf_4d", "Arg_4d", "Bel_4d")
+    
+    sign_df <- raw_adf[, paste0(contrasts, ".logFC")] %>% 
+        apply(2, 
+            function(row) { 
+                vapply(
+                    row, 
+                    function(element) {  
+                        if (is.na(element)) { "-" } else if (element > 0) {"UP"} else {"DOWN"}
+                    },
+                    ""
+                )
+        })
+    colnames(sign_df) <- paste0(contrasts, ".foldDir")
+    adf <- cbind(raw_adf %>% dplyr::select(target_cols), sign_df)
+    adf
+}
+
+adf <- get_target_fields_adf(ses_b1_stats_annot$pt_prot %>% get_adf())
+adf
+```
+
+## Write significance tables
+
+```{r}
+lapply(contrasts, function(contrast, adf) {
+    out_df <- adf %>% filter(UQ(as.name(paste0(contrast, ".adj.P.Val"))) < 0.05)
+
+    write_tsv(
+        out_df, 
+        path = sprintf("tables/%s_4d_fdr005.tsv", contrast)
+    )
+}, adf=ses_b1_stats_annot$pt_prot %>% get_adf() %>% get_target_fields_adf())
+```
+
+## Write presence / absence tables
+
+```{r}
+lapply(contrasts, function(contrast, adf) {
+    out_df <- adf %>% filter(UQ(as.name(paste0(contrast, ".presence"))) == "HIGHONLY_FULL") %>% arrange(Description)
+    write_tsv(out_df, path=sprintf("tables/%s_4d_presence.tsv", contrast))
+}, adf=ses_b1_stats_annot$pt_pep %>% get_adf() %>% get_target_fields_adf())
+```
+
+## Physiological: DON content
+
+```{r}
+warning("TODO: Get these directly from spreadsheet?")
+
+argamak_measures <- c(143.409, 134.318, 147.197)
+belinda_measures <- c(182.045, 225.985, 228.258)
+
+arg_df <- data.frame(type="Argamak", measures=argamak_measures)
+bel_df <- data.frame(type="Belinda", measures=belinda_measures)
+
+don_df <- rbind(arg_df, bel_df)
+don_df
+
+plt <- ggplot(don_df, aes(x=type, y=measures)) + 
+    geom_boxplot() + 
+    geom_point() + 
+    ylim(0, 250) + 
+    xlab(NULL) +
+    ylab("DON ppm") + 
+    ggtitle("DON content 4 days after infection") +
+    labs(color=NULL) +
+    geom_signif(
+        comparisons = list(c("Argamak", "Belinda")),
+        map_signif_level=TRUE, 
+        test="t.test"
+    )
+plt
+ggsave(plt, filename="figs/don_fig.png")
+```
+
+## Overview figures
+
+### Principal component: Full dataset
+
+This figure display the raw first view of the complete dataset after Loess normalization.
+It is dominated by a batch effect, likely caused by variations in the sample preparation.
+Closer investigation indicated that the samples in the right-most cluster were of consistently
+higher quality, and it was decided to process with these samples, specifically with the 
+day four contrasts.
+
+```{r fig.width=10}
+pca_mat <- rdfs$pt_pep %>% 
+    dplyr::select(ddf$old_sample) %>% 
+    NormalyzerDE::performCyclicLoessNormalization() %>% 
+    data.frame() %>% 
+    filter(complete.cases(.)) %>% 
+    as.matrix()
+pca_meta <- ddf %>% 
+    data.frame()
+rownames(pca_meta) <- colnames(pca_mat)
+
+pca_obj <- PCAtools::pca(
+    mat = pca_mat,
+    metadata = pca_meta,
+    scale = TRUE
+)
+plt <- PCAtools::biplot(pca_obj, colby="combined", legendPosition = "right") + ggtitle("Batch separation for raw data")
+plt
+ggsave(plt, filename="figs/total_pca.png", width=7, height=7)
+```
+
+### Should we show the mass spectrometer overview figure?
+
+Inspection of the performance of the mass spectrometer revealed a clear difference in number of detected spectra across the two batches.
+Furthermore, a smaller batch effect was revealed. This one is not clearly evident in the overview illustrations, but still needs
+to be taken into consideration while performing the analysis.
+
+```{r}
+# Mass spectrometer variations?
+```
+
+### Missing values differences
+
+```{r}
+pt_pep_sdf <- rdfs$pt_pep %>% dplyr::select(ddf$old_sample)
+
+ddf$missing_counts <- colSums(is.na(pt_pep_sdf))
+ddf$percent_missing <- ddf$missing_counts / nrow(pt_pep_sdf) * 100
+ddf
+ggplot(ddf, aes(x=old_sample, y=missing_counts, fill=batch)) + geom_col()
+ggplot(ddf, aes(x=old_sample, y=missing_counts, fill=processing_day)) + geom_col()
+
+ddf$comb_batch <- paste0("batch", ddf$batch, "_runtime", as.numeric(as.factor(ddf$processing_day)))
+
+nrow(pt_pep_sdf)
+
+missing_vals_plt <- ggplot(ddf, aes(x=comb_batch, y=percent_missing, group=comb_batch)) + geom_boxplot() + geom_point() + ggtitle("Missing values across batches") + xlab("Batch") + ylab("Percentage missing (out of 7147 peptides)")
+
+missing_vals_plt
+nrow(pt_pep_sdf)
+ggsave(missing_vals_plt, filename = "figs/missing_vals.png", width=7, height=7)
+```
+
+### Principal component: 4 days
+
+When focusing on 4 days only comparison the principal component analysis shows clear separation
+on variety and secondary separation on infection, which is as would be expected.
+
+```{r}
+pca_meta_4d <- colData(ses_b1_stats$pt_prot) %>% 
+    data.frame() %>%
+    filter(time == "4d")
+pca_mat_4d <- assays(ses_b1_stats$pt_prot)$loess %>% 
+    data.frame() %>% 
+    dplyr::select(pca_meta_4d$old_sample) %>%
+    filter(complete.cases(.)) %>% 
+    as.matrix()
+rownames(pca_meta_4d) <- colnames(pca_mat_4d)
+
+pca_obj_4d <- PCAtools::pca(
+    mat = pca_mat_4d,
+    metadata = pca_meta_4d,
+    scale = TRUE
+)
+plt <- PCAtools::biplot(pca_obj_4d, colby="combined", legendPosition = "right") + ggtitle("Batch separation for raw data, 4 days samples")
+plt
+ggsave(plt, filename="figs/4d_pca.png")
+# PCAtools::biplot(pca_obj_4d, colby="combined", legendPosition = "right", x="PC3", y="PC4") + ggtitle("Batch separation for raw data, 4 days samples")
+```
+
+```{r}
+pca_meta_b2 <- ddf %>% 
+    filter(batch == 2) %>%
+    data.frame()
+
+pca_meta_d2 <- ddf %>% 
+    filter(time == "2d") %>%
+    data.frame()
+
+pca_mat_d2 <- rdfs$pt_pep %>% 
+    dplyr::select(pca_meta_b2$old_sample) %>% 
+    NormalyzerDE::performCyclicLoessNormalization() %>% 
+    data.frame() %>%
+    dplyr::select(pca_meta_d2$old_sample) %>%
+    filter(complete.cases(.)) %>% 
+    as.matrix()
+
+rownames(pca_meta_d2) <- colnames(pca_mat_d2)
+
+pca_meta_d2$processing_day <- as.factor(pca_meta_d2$processing_day)
+
+pca_obj_d2 <- PCAtools::pca(
+    mat = pca_mat_d2,
+    metadata = pca_meta_d2,
+    scale = TRUE
+)
+PCAtools::biplot(pca_obj_d2, colby="combined", legendPosition = "right") + ggtitle("Batch separation for raw data, 2 days samples")
+PCAtools::biplot(pca_obj_d2, colby="processing_day", legendPosition = "right") + ggtitle("Batch separation for raw data, 2 days samples")
+
+```
+
+### Hierarhical clustering, 4 days
+
+```{r}
+make_dendogram <- function(data_m, color_levels, labels=NULL, pick_top_variance=null, title="Dendogram") {
+
+    samples <- colnames(data_m)
+    
+    if (is.null(labels)) {
+        labels <- samples
+    }
+    
+    # Setup data
+    expr_m_nona <- data_m[complete.cases(data_m),]
+
+    # Calculate tree
+    scaledTransposedMatrix <- scale(t(expr_m_nona), center=TRUE, scale=TRUE)
+    hc <- stats::hclust(stats::dist(scaledTransposedMatrix), "ave")
+    dhc <- as.dendrogram(hc)
+    # Note - Label order is shuffled within this object! Be careful with coloring.
+    ddata <- dendro_data(dhc, type="rectangle")
+
+    # Prepare for plotting
+    cluster_label_order <- match(ddata$labels$label, samples)
+    ddata$labels$color <- color_levels[cluster_label_order]
+    ddata$labels$label <- labels[cluster_label_order]
+
+    # Visualize
+    plt <- ggplot(segment(ddata)) +
+        geom_segment(aes(x=x, y=y, xend=xend, yend=yend)) +
+        theme_dendro() +
+        geom_text(data=label(ddata),
+                  aes(x=x, y=y, label=label, color=color),
+                  vjust=0.5, hjust=0, size=3) +
+        coord_flip() +
+        scale_y_reverse(expand=c(0.2, 0)) +
+        scale_x_continuous(expand=c(0,1)) +
+        ggtitle(title)
+    plt
+}
+
+dend_plt <- make_dendogram(
+    pca_mat_4d,
+    pca_meta_4d$combined,
+    title="Four days after infection samples"
+) + labs(color="Sample group")
+
+dend_plt
+ggsave(dend_plt, filename="figs/dendogram_4d.png")
+```
+
+## Statistical overview
+
+### Four-pane vulcano
+
+```{r fig.width=10}
+library(ggpubr)
+library(ggrepel)
+
+make_contrast_grid_plot <- function(
+    se, visuals_func, main_title="", 
+    contrasts = list(
+        "Ctl"="Control: Argamak / Belinda", 
+        "Inf"="Infected: Argamak / Belinda", 
+        "Arg"="Argamak: Infected / Control", 
+        "Bel"="Belinda: Infected / Control"), 
+        ncol=2, nrow=2, ...) {
+    
+    do.call(
+        ggarrange, 
+        c(
+            lapply(names(contrasts), function(contrast_name, contrasts, se) { 
+                adf <- rowData(se) %>% data.frame()
+                ddf <- colData(se) %>% data.frame()
+                sdf <- assays(se)$target
+                visuals_func(adf=adf, ddf=ddf, sdf=sdf, name=contrast_name, title=contrasts[[contrast_name]], ...)
+            }, contrasts=contrasts, se=se),
+            common.legend=TRUE,
+            ncol=ncol,
+            nrow=nrow
+        )
+    )
+}
+
+vulc_func <- function(adf, name, title, show_ids=0, ylim=c(0, 8), xlim=c(-6.5, 6.5), ...) {
+    
+    logfc_col <- sprintf("%s_4d.logFC", name)
+    pval_col <- sprintf("%s_4d.P.Value", name)
+    fdr_col <- sprintf("%s_4d.adj.P.Val", name)
+
+    adf <- adf %>% filter(!is.na(UQ(as.name(pval_col)))) %>% arrange(UQ(as.name(sprintf("%s_4d.P.Value", name))))
+    
+    adf$min_log10_pval <- -log10(adf[[pval_col]])
+    adf$is_sig <- adf[[fdr_col]] < 0.05
+    
+    plt <- ggplot(adf, aes_string(x=logfc_col, y="min_log10_pval", color="is_sig")) + 
+        geom_point(alpha=0.4) + 
+        ggtitle(title) + 
+        xlab("log2 fold") + 
+        ylab("-log10(P-value)") + 
+        ylim(ylim) + 
+        xlim(xlim) + 
+        labs(color="FDR < 0.05") +
+        scale_color_manual(values=gray_blue_colors)
+    
+    if (show_ids > 0) {
+        adf$labels <- adf$ProteinIDFirst %>% gsub("\\..*", "", .)
+        adf$labels[seq(show_ids+1, nrow(adf))] <- ""
+        # show_ids <- 5
+        # adf$labels
+        plt + geom_text_repel(data=adf, aes(label=labels), min.segment.length = 0, label_size=0.15)
+    }
+    else {
+        plt
+    }
+}
+
+```
+
+
+```{r}
+vulc_plots <- make_contrast_grid_plot(ses_b1_stats_annot$pt_prot, vulc_func) %>%
+    annotate_figure(top="Vulcano plots")
+vulc_plots
+ggsave(vulc_plots, filename="figs/vulc_plots.png", width=7, height=7)
+```
+
+### Focused vulcano?
+
+Could potentially take control and infection volcanos and mark out target proteins there,
+which then are discussed in the article itself
+
+```{r}
+vulc_plots_small <- make_contrast_grid_plot(
+    ses_b1_stats_annot$pt_prot, 
+    vulc_func, 
+    contrasts=list("Ctl"="Control: Argamak / Belinda", "Inf"="Infected: Argamak / Belinda"), 
+    nrow=1, 
+    show_ids=5, ylim=c(0, 6)) %>% annotate_figure(top="")
+vulc_plots_small
+ggsave(vulc_plots_small, filename="figs/vulc_plots_focus.png", width=7, height=5)
+
+
+
+ses_b1_stats_annot$pt_prot %>% get_adf()
+```
+
+### Four-pane MA
+
+```{r}
+ma_plots <- make_contrast_grid_plot(ses_b1_stats$pt_prot, function(adf, name, ...) { 
+    
+    logfc_col <- sprintf("%s_4d.logFC", name)
+    expr_col <- sprintf("%s_4d.AveExpr", name)
+    fdr_col <- sprintf("%s_4d.adj.P.Val", name)
+
+    adf <- adf %>% filter(!is.na(UQ(as.name(fdr_col)))) %>% arrange(desc(UQ(as.name(fdr_col))))
+        
+    adf$is_sig <- adf[[fdr_col]] < 0.05
+    
+    ggplot(adf, aes_string(x=expr_col, y=logfc_col, color="is_sig")) + 
+        geom_point(alpha=0.6) + 
+        ggtitle(name) + 
+        ylim(-6, 6) +
+        xlab("Average expression") + 
+        ylab("Log2 fold") + 
+        labs(color="FDR < 0.05") +
+        scale_color_manual(values=gray_blue_colors)
+
+}) %>% annotate_figure(top="MA plots")
+ma_plots
+ggsave(ma_plots, filename="figs/ma_plots.png", width=7, height=7)
+```
+
+### Four-pane p-value histograms
+
+```{r}
+pval_hists <- make_contrast_grid_plot(ses_b1_stats$pt_prot, function(adf, name, ...) { 
+    ggplot(adf, aes_string(x=sprintf("%s_4d.P.Value", name))) + geom_histogram(bins=50) + ggtitle(name) 
+}) %>% annotate_figure(top="P-Value histogram")
+pval_hists
+ggsave(pval_hists, filename="figs/pval_hists.png")
+```
+
+### Upset: Overlap in significant proteins across the four comparisons
+
+```{r}
+library(UpSetR)
+warning("Limitation here: We are using one out of several protein IDs. How to get around that?")
+
+filter_and_get_col <- function(se, filter_field, protein_field, sig_thres=0.05) {
+    se %>% get_adf() %>% filter(UQ(as.name(filter_field)) < sig_thres) %>% dplyr::select(UQ(as.name(protein_field))) %>% unlist() %>% unname()
+}
+
+overlaps <- UpSetR::upset(
+    fromList(
+        list(
+            Control=ses_b1_stats_annot$pt_prot %>% filter_and_get_col("Ctl_4d.adj.P.Val", "ProteinIDFirst", sig_thres=0.05),
+            Infected=ses_b1_stats_annot$pt_prot %>% filter_and_get_col("Inf_4d.adj.P.Val", "ProteinIDFirst", sig_thres=0.05),
+            Argamak=ses_b1_stats_annot$pt_prot %>% filter_and_get_col("Arg_4d.adj.P.Val", "ProteinIDFirst", sig_thres=0.05),
+            Belinda=ses_b1_stats_annot$pt_prot %>% filter_and_get_col("Bel_4d.adj.P.Val", "ProteinIDFirst", sig_thres=0.05)
+        )
+    )
+)
+png(filename = "figs/four_comp_upset.png")
+overlaps
+dev.off()
+overlaps
+```
+
+### Venn: Up- and down- regulation across Argamak - Belinda
+
+```{r}
+make_pairwise_venn <- function(adf, contrast1_base, contrast2_base, sig_thres=0.05, title="", colors=NULL) {
+
+    contrast1_sig_contrast <- adf[[paste0(contrast1_base, ".adj.P.Val")]] < sig_thres
+    contrast2_sig_contrast <- adf[[paste0(contrast2_base, ".adj.P.Val")]] < sig_thres
+    
+    contrast1_fold <- adf[[paste0(contrast1_base, ".logFC")]]
+    contrast2_fold <- adf[[paste0(contrast2_base, ".logFC")]]
+    
+    both_sig_inds <- which(contrast1_sig_contrast & contrast2_sig_contrast)
+    contra_count <- length(which(sign(contrast1_fold[both_sig_inds]) != sign(contrast2_fold[both_sig_inds])))
+    
+    vdc <- limma::vennCounts(cbind(contrast1_sig_contrast, contrast2_sig_contrast))
+    class(vdc) <- 'matrix'
+    df.vdc <- data.frame(vdc[-1, ])
+    df.vdc <- rbind(df.vdc, c(-1, -1, contra_count))
+    df.vdc$x <- c(-1.5, 1.5, 0, 0)
+    df.vdc$y <- c(0, 0, 0, -0.3)
+    df.vdc$label <- df.vdc$Counts
+    df.vdc$label[3] <- paste0(df.vdc$label[3] - df.vdc$label[4], " same")
+    df.vdc$label[4] <- paste0(df.vdc$label[4], " contra")
+    
+    df.venn <- data.frame(x = c(-0.5, 0.5),
+                          y = c(0, 0),
+                          labels = c(contrast1_base, contrast2_base))
+    
+    plt <- ggplot2::ggplot(data=df.venn) +
+        ggforce::geom_circle(
+            ggplot2::aes_string(x0 = "x", y0 = "y", r = 1.5, fill = "labels"), 
+            alpha = .3, 
+            size = 0.5, 
+            colour = 'darkgray'
+        ) +
+        ggplot2::coord_fixed() +
+        ggplot2::theme_void() +
+        ggplot2::theme(legend.position = 'bottom', legend.direction='vertical') +
+        ggplot2::scale_fill_manual(values = colors) +
+        ggplot2::scale_colour_manual(values = colors, guide = FALSE) +
+        ggplot2::labs(fill = NULL) +
+        ggplot2::annotate("text", x = df.vdc$x, y = df.vdc$y, label = df.vdc$label, size = 5) +
+        ggplot2::ggtitle(title)
+    
+    plt
+}
+
+thres <- 0.1
+
+venn_ctl_inf <- make_pairwise_venn(
+    ses_b1_stats_annot$pt_prot %>% get_adf(),
+    "Ctl_4d", "Inf_4d", title=sprintf("Control / Infected comparisons (FDR < %s)", thres),
+    thres, 
+    colors=gray_blue_colors
+)
+venn_ctl_inf
+ggsave(venn_ctl_inf, filename="figs/venn_ctl_inf.png")
+
+venn_arg_bel <- make_pairwise_venn(
+    ses_b1_stats_annot$pt_prot %>% get_adf(),
+    "Arg_4d", "Bel_4d", title=sprintf("Argamak / Belinda comparisons (FDR < %s)", thres), 
+    thres, 
+    colors=gray_blue_colors
+)
+ggsave(venn_arg_bel, filename="figs/venn_arg_bel.png")
+
+```
+
+### Upset comparison across Proteios and MaxQuants
+
+```{r}
+prot_thres <- 0.05
+mq_thres <- 0.1
+
+
+lapply(list("Ctl", "Inf", "Arg", "Bel"), function(contrast, ses, prot_thres, mq_thres) {
+    venn(
+        list(
+            Proteios = ses$pt_prot %>% filter_and_get_col(sprintf("%s_4d.adj.P.Val", contrast), "ProteinIDFirst", sig_thres=prot_thres),
+            MQProt =   ses$mq_prot %>% filter_and_get_col(sprintf("%s_4d.adj.P.Val", contrast), "ProteinIDFirst", sig_thres=mq_thres),
+            MQLFQ =    ses$mq_lfq %>% filter_and_get_col(sprintf("%s_4d.adj.P.Val", contrast), "ProteinIDFirst", sig_thres=mq_thres)
+        )
+    )
+}, ses=ses_b1_stats_annot, prot_thres=prot_thres, mq_thres=mq_thres)
+```
+
+## GO figures
+
+```{r}
+go_plot_for_all <- function(all_go_results, go_plot_func, cutoff_sig=0.1, min_count=0, ...) {
+    
+    lapply(names(all_go_results), function(result_group_name, all_go_results) {
+        
+        go_results <- all_go_results[[result_group_name]]
+        print(result_group_name)        
+        
+        lapply(names(go_results), function(go_result_name, group_name, go_results) {
+            
+            print(go_result_name)
+            specific_ontology <- go_results[[go_result_name]]
+            
+            if (specific_ontology@result %>% filter(p.adjust < cutoff_sig) %>% nrow() >= min_count) {
+                go_plot_func(specific_ontology, ...) + ggtitle(paste(go_result_name, result_group_name))
+            }
+        }, group_name=result_group_name, go_results=go_results)
+    }, all_go_results)
+}
+```
+
+### Dotplot
+
+
+```{r fig.height=16,fig.width=16}
+go_dots <- go_plot_for_all(all_go_results, clusterProfiler::dotplot, min_count=2)
+
+go_dots <- grid.arrange(
+    go_dots[[1]][[1]], 
+    go_dots[[1]][[3]],
+    go_dots[[2]][[2]],
+    go_dots[[3]][[2]],
+    go_dots[[3]][[3]],
+    go_dots[[4]][[2]],
+    go_dots[[4]][[3]],
+    ncol=2
+)
+
+ggsave(go_dots, filename="figs/go_dots.png", width=16, height=20)
+```
+
+### Network plot
+
+### GO plot
+
+```{r fig.width=12}
+go_plot_for_all(all_go_results, enrichplot::goplot, min_count=3, showCategory=5)
+```
+
+### GO network
+
+
+
+```{r fig.width=10,fig.height=10}
+
+make_gene_list <- function(row_data, id_col, stat_col, reduce_dup_func=median) {
+    df <- row_data %>% 
+        dplyr::select(c(id_col, stat_col))
+    df[[id_col]] <- df[[id_col]] %>% gsub("\\..*", "", .) %>% gsub("\\|.*", "", .)
+    
+    colnames(df) <- c("id_col", "stat_col")
+    
+    df_wo_dups <- df %>%
+        group_by(id_col) %>%
+        summarize(stat_col=reduce_dup_func(stat_col)) %>%
+        arrange(desc(stat_col)) %>%
+        data.frame()
+    geneList <- df_wo_dups$stat_col
+    names(geneList) <- df_wo_dups$id_col
+    geneList
+}
+
+row_data <- ses_b1_stats_annot$pt_prot %>% get_adf()
+id_col <- "ProteinIDFirst"
+stat_col <- "Ctl_4d.logFC"
+reduce_dup_func <- median
+
+
+gene_list <- make_gene_list(
+    ses_b1_stats_annot$pt_prot %>% get_adf(),
+    "ProteinIDFirst",
+    "Ctl_4d.logFC"
+)
+network_plt <- enrichplot::cnetplot(all_go_results$Infected$BP, foldChange = gene_list, showCategory = 5, circular = TRUE, colorEdge=TRUE)
+
+go_plt <- enrichplot::goplot(all_go_results$Infected$BP, showCategory = 5) + ggtitle("Infected Argamak / Belinda, biological process, top 5 entries")
+
+comb_plt <- grid.arrange(go_plt, network_plt)
+ggsave(comb_plt, filename = "figs/network_plots.png", width=10, height=10)
+```
+
+### GO overview
+
+```{r fig.width=7,height=10}
+library(GO.db)
+
+df <- ses_b1_stats_annot$pt_prot %>% get_adf()
+
+arab_ids <- df$ProteinIDFirst[!is.na(df$ProteinID) & grepl("^AT", df$ProteinID)] %>% gsub("\\..*", "", .)
+
+key_type <- "TAIR"
+gene_set_permutations <- 1000
+bioc_db <- "org.At.tair.db"
+
+target_level <- 2
+max_select <- Inf
+
+get_go <- function(target_level, arab_ids, ont) {
+    groupGO(
+        gene=unique(arab_ids),
+        OrgDb = bioc_db,
+        ont = ont,
+        level = target_level,
+        readable=TRUE, 
+        keyType = "TAIR"
+    )
+}
+
+go_mf <- get_go(target_level, arab_ids, "MF")
+go_bp <- get_go(target_level, arab_ids, "BP")
+go_cc <- get_go(target_level, arab_ids, "CC")
+
+df_long <- rbind(
+    go_mf@result %>% data.frame() %>% filter(Count > 0) %>% arrange(desc(Count)) %>% mutate(type="MF") %>% head(max_select),
+    go_bp@result %>% data.frame() %>% filter(Count > 0) %>% arrange(desc(Count)) %>% mutate(type="BP") %>% head(max_select),
+    go_cc@result %>% data.frame() %>% filter(Count > 0) %>% arrange(desc(Count)) %>% mutate(type="CC") %>% head(max_select)
+)
+
+plt <- df_long %>%
+    arrange(type, Count) %>% mutate(Description=factor(Description, levels=Description)) %>%
+    ggplot(., aes(Description, Count, fill=type)) + 
+        geom_col() + 
+        coord_flip() + 
+        facet_grid(scales="free_y", space="free_y", rows=vars(type)) + 
+        ggtitle(paste("GO terms, lv", target_level))
+
+plt
+ggsave(plt, filename="figs/go_total.png", width=7, height=10)
+
+```
+
+# Run info
+
+```{r}
+sessionInfo()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
