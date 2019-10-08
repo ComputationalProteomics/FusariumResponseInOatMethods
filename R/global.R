@@ -16,21 +16,36 @@ library(shinyEventLogger)
 
 set_logging()
 
-# Modules
-source("module_enrichment.R")
-source("module_multivar_vis.R")
-source("module_about.R")
-source("module_table.R")
-source("module_single_feature.R")
+in_package <- FALSE
+
+if (!in_package) {
+    source("module_enrichment.R")
+    source("module_multivar_vis.R")
+    source("module_about.R")
+    source("module_table.R")
+    source("module_single_feature.R")
+}
 
 # Paths
-query_proteins_arg_fp <- "shiny_data/transcripts-shortid_fa_transdecoder-Arg-shortid_pep.fasta"
-query_proteins_bel_fp <- "shiny_data/transcripts-shortid_fa_transdecoder-Bel-shortid_pep.fasta"
-search_fasta_fp <- "shiny_data/search_protein.fasta"
-rds_obj_fp <- "shiny_data/combined_flat_ses.rds"
+shiny::shinyOptions(
+    query_proteins_arg_fp = "shiny_data/transcripts-shortid_fa_transdecoder-Arg-shortid_pep.fasta",
+    query_proteins_bel_fp = "shiny_data/transcripts-shortid_fa_transdecoder-Bel-shortid_pep.fasta",
+    search_fasta_fp = "shiny_data/search_protein.fasta",
+    rds_obj_fp = "shiny_data/combined_flat_ses.rds"
+)
 
-datasets <- ""
-transcript_peps <- ""
+query_proteins_arg_fp <- shiny::getShinyOption("query_proteins_arg_fp")
+query_proteins_bel_fp <- shiny::getShinyOption("query_proteins_bel_fp")
+search_fasta_fp <- shiny::getShinyOption("search_fasta_fp")
+rds_obj_fp <- shiny::getShinyOption("rds_obj_fp")
+
+# query_proteins_arg_fp <- "shiny_data/transcripts-shortid_fa_transdecoder-Arg-shortid_pep.fasta"
+# query_proteins_bel_fp <- "shiny_data/transcripts-shortid_fa_transdecoder-Bel-shortid_pep.fasta"
+# search_fasta_fp <- "shiny_data/search_protein.fasta"
+# rds_obj_fp <- "shiny_data/combined_flat_ses.rds"
+
+# datasets <- ""
+# transcript_peps <- ""
 
 datasets <- readRDS(rds_obj_fp)
 print(names(datasets))

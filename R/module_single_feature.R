@@ -59,8 +59,6 @@ single_feature_panel_ui <- function(id, features, datasets_names) {
 
 single_feature_panel <- function(input, output, session, table_vars, datasets) {
     
-    log_message("Call: single_feature_panel")
-    
     align <- reactiveVal(NULL)
     positions <- reactiveVal(NULL)
 

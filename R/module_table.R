@@ -63,7 +63,7 @@ table_panel_ui <- function(id, timepoints, annot_types, expr_presence) {
                             div("Do alignment by clicking row and press 'Do align'"),
                             div("Enrichment is performed for current filtering selection, with all (non-filtered) IDs as the universe")
                         ),
-                        dataTableOutput(ns("table"))
+                        DT::dataTableOutput(ns("table"))
                     )
                 )
             )
@@ -72,21 +72,22 @@ table_panel_ui <- function(id, timepoints, annot_types, expr_presence) {
 }
 
 table_vis <- function(input, output, session, table_vars) {
-    
+
+    # output$table <- DT::renderDataTable(data.frame(c(1,2,3), c(2,3,4)))
+
     output$table <- DT::renderDataTable({
         show_table(
-            table_vars$cached_filtered_table(), 
-            table_vars$stat_bases(), 
-            get_all_cols=FALSE, 
-            annot_cols=input$table_add_shown_fields, 
+            table_vars$cached_filtered_table(),
+            table_vars$stat_bases(),
+            get_all_cols=FALSE,
+            annot_cols=input$table_add_shown_fields,
             stat_cols=input$table_add_stat_fields
         )
     })
 }
 
-table_panel <- function(input, output, session, datasets, open_tab) {
+table_panel <- function(input, output, session, datasets, open_tab, sample_name="old_sample") {
 
-    log_event("Setup tab_panel")
     observeEvent(input$button_show_align, {
         open_tab("Alignment")
     })
@@ -155,7 +156,6 @@ table_panel <- function(input, output, session, datasets, open_tab) {
         }
     )
     
-    sample_name <- "old_sample"
     table_vars$cached_full_table <- reactive({
         cbind(rowData(datasets[[input$dataset]]) %>% data.frame(), assay(datasets[[input$dataset]]) %>% data.frame())
     })

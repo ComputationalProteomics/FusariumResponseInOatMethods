@@ -1,4 +1,4 @@
-shinyUI(navbarPage(
+ui <- shinyUI(navbarPage(
     theme = shinytheme("flatly"),
     "OmicsLoupe",
     id="navbar",

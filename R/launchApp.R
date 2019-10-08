@@ -5,7 +5,12 @@
 #' @example \dontrun {launchApp()}
 #' @import shiny
 
+library(shiny)
+
 # wrapper for shiny::shinyApp()
-launchApp <- function() {
-    shinyApp(ui = shinyAppUI, server = shinyAppServer)
+launchApp <- function(in_path="dummy_path") {
+    
+    shiny::shinyOptions(in_path=in_path)
+    
+    shinyApp(ui = ui, server = server)
 }
