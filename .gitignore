@@ -1,0 +1,6 @@
+# Directories
+unused/
+shiny_data/
+
+# Files
+R/shiny_data
