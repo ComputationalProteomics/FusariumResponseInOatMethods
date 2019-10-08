@@ -1,0 +1,32 @@
+Package: OatOmics
+Title: Interactively illustrate proteogenomics oat dataset
+Version: 0.9.0
+Maintainer: Jakob Willforss <jakob.willforss@immun.lth.se>
+Author: Jakob Willforss
+Authors@R: c(person("Jakob", "Willforss", email="jakob.willforss@immun.lth.se", role=c("aut", "cre")))
+Description: 
+    OatOmics allows interactively inspecting a proteogenomics oat dataset.
+Imports:
+    R6,
+    shiny,
+    tidyverse,
+    SummarizedExperiment,
+    DT,
+    shinythemes,
+    enrichplot,
+    msaR,
+    limma,
+    Biostrings,
+    DECIPHER,
+    clusterProfiler,
+    org.At.tair.db,
+    ggdendro,
+    PCAtools
+Suggests:
+    knitr
+VignetteBuilder: knitr
+License: Artistic-2.0
+Encoding: UTF-8
+RoxygenNote: 6.1.1
+URL: ""
+Depends: R (>= 3.6)
