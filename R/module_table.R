@@ -73,8 +73,6 @@ table_panel_ui <- function(id, timepoints, annot_types, expr_presence) {
 
 table_vis <- function(input, output, session, table_vars) {
 
-    # output$table <- DT::renderDataTable(data.frame(c(1,2,3), c(2,3,4)))
-
     output$table <- DT::renderDataTable({
         show_table(
             table_vars$cached_filtered_table(),
