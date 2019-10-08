@@ -14,7 +14,7 @@ do_pca_scree <- function(sdf) {
 
 multi_vis_plots <- c("PCA", "Cluster", "Histogram")
 
-pca_panel_ui <- function(id) {
+multivarvis_panel_ui <- function(id, datasets, conditions) {
     ns <- NS(id)
     
     tabPanel(
@@ -34,7 +34,6 @@ pca_panel_ui <- function(id) {
                     selectInput(ns("custom_names"), "Custom names", choices=c("none", conditions), selected="none"),
                     selectInput(ns("legend_position"), "Legend position", choices=c("none", "right"), selected="none"),
                     selectInput(ns("omit_samples"), "Omit samples", choices=colnames(datasets[[1]]), selected = NULL, multiple = TRUE),
-                    # actionButton(ns("mark_all_omitted"), "Mark all omitted"),
                     selectInput(ns("filter_type"), "Filter on type", choices=c("none", colnames(colData(datasets[[1]]))), selected="none"),
                     selectInput(ns("filter_type_levels"), "Levels to inspect", choices=NULL, selected=NULL, multiple=TRUE),
                     checkboxInput(ns("show_pca_settings"), "Show PCA settings", value=FALSE),

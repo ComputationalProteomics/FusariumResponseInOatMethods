@@ -123,8 +123,6 @@ single_feature_panel <- function(input, output, session, table_vars, datasets) {
             only_4d=input$only_4d
         )
     })
-    
-    log_message("Call end: single_feature_panel")
 }
 
 # Contrast panel
@@ -248,41 +246,9 @@ analyze_positions <- function(align, pattern1, pattern2, min_support=2) {
 
 make_proteogenomic_alignment <- function(dataset, search_sequences, target_feature, width, prompt_val=NULL, protein_id_col="ProteinID", pep_seq_col="Peptide.Sequence") {
     
-    # browser()
-    
-    # blast_hit_protein_ids_list <- rowData(dataset)[[protein_id_col]] %>% unlist() %>% as.character() %>% strsplit(",")
-    # blast_hit_protein_ids_long_df <- tibble(
-    #     id=seq_along(blast_hit_protein_ids_list), 
-    #     protein=blast_hit_protein_ids_list
-    # ) %>% unnest() %>% 
-    #     mutate(protein=gsub("\\|.*", "", protein)) %>% 
-    #     # mutate(protein=gsub("\\..*", "", protein)) %>%
-    #     data.frame()
-    # 
-    # # browser()
-    # 
-    # matching_id_indices <- blast_hit_protein_ids_long_df %>% filter(protein %in% target_feature) %>% dplyr::select(id) %>% unlist()
-    # transcript_ids <- rowData(dataset)[[protein_id_col]][matching_id_indices] %>% as.character() %>% strsplit(",") %>% unlist() %>% sort() %>% unique()
-    # 
-    # if (pep_seq_col %in% colnames(rowData(dataset))) {
-    #     rowData(dataset)$clean_peps <- get_clean_peptides(dataset, pep_seq_col)
-    #     ms_peps <- rowData(dataset)[matching_id_indices, ] %>%
-    #         data.frame() %>%
-    #         dplyr::select(clean_peps) %>%
-    #         unlist() %>%
-    #         Biostrings::AAStringSet()
-    # }
-    # else {
-    #     ms_peps <- NULL
-    # }
-    
-    
-    
     blast_hit_protein_ids <- limma::strsplit2(rowData(dataset)$ProteinID, "\\|")[, 1]
     matching_external_ids <- rowData(dataset)$External.IDs[blast_hit_protein_ids %in% target_feature]
     transcript_ids <- sort(unique(unlist(strsplit(matching_external_ids, ","))))
-
-    pep_seq_col <- "Peptide.Sequence"
 
     if (pep_seq_col %in% colnames(rowData(dataset))) {
         rowData(dataset)$clean_peps <- get_clean_peptides(dataset, pep_seq_col)

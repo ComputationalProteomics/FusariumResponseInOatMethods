@@ -1,7 +1,9 @@
 library(shiny)
 library(tidyverse)
 
-table_panel_ui <- function(id, timepoints, annot_types, expr_presence) {
+table_panel_ui <- function(
+    id, timepoints, annot_types, expr_presence, datasets, contrast_types, default_display_cols, optional_display_cols, 
+    default_stat_fields, optional_stat_fields) {
     
     ns <- NS(id)
     tabPanel(
@@ -18,7 +20,6 @@ table_panel_ui <- function(id, timepoints, annot_types, expr_presence) {
                     style = "float:left;",
                     
                     checkboxInput(ns("show_settings"), "Show settings", value=TRUE),
-
                     conditionalPanel(
                         sprintf("input['%s'] == 1", ns("show_settings")),
 

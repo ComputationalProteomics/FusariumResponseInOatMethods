@@ -1,4 +1,4 @@
-in_package <- FALSE
+in_package <- F
 
 if (!in_package) {
     source("module_enrichment.R")
@@ -7,15 +7,15 @@ if (!in_package) {
     source("module_table.R")
     source("module_single_feature.R")
     
+    print(getwd())
+    
     shiny::shinyOptions(
-        query_proteins_arg_fp = "shiny_data/transcripts-shortid_fa_transdecoder-Arg-shortid_pep.fasta",
-        query_proteins_bel_fp = "shiny_data/transcripts-shortid_fa_transdecoder-Bel-shortid_pep.fasta",
-        search_fasta_fp = "shiny_data/search_protein.fasta",
-        rds_obj_fp = "shiny_data/combined_flat_ses.rds"
+        query_proteins_arg_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Arg-shortid_pep.fasta",
+        query_proteins_bel_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Bel-shortid_pep.fasta",
+        search_fasta_fp = "../../FusariumResponseInOatMethods_files/shiny_data/search_protein.fasta",
+        rds_obj_fp = "../../FusariumResponseInOatMethods_files/shiny_data/combined_flat_ses.rds"
     )
 }
-
-
 
 get_global <- function() {
 
@@ -35,14 +35,31 @@ get_global <- function() {
     library(msaR)
     library(org.At.tair.db)
     library(ggdendro)
-    library(shinyEventLogger)
-    
+
     # Paths
     
     query_proteins_arg_fp <- shiny::getShinyOption("query_proteins_arg_fp")
     query_proteins_bel_fp <- shiny::getShinyOption("query_proteins_bel_fp")
     search_fasta_fp <- shiny::getShinyOption("search_fasta_fp")
     rds_obj_fp <- shiny::getShinyOption("rds_obj_fp")
+    
+    if (is.null(rds_obj_fp)) {
+        message("No rds_obj_fp found, returning default settings")
+        global$datasets <- "datasets"
+        global$features <- "features"
+        global$all_cols <- "all_cols"
+        global$optional_display_cols <- "optional_display_cols"
+        global$default_display_cols <- "default_display_cols"
+        global$base_target <- "base_target"
+        global$optional_stat_fields <- "optional_stat_fields"
+        global$default_stat_fields <- "default_stat_fields"
+        global$timepoints <- "timepoints"
+        global$contrast_types <- "contrast_types"
+        global$annot_types <- "annot_types"
+        global$expr_presence <- "expr_presence"
+        global$conditions <- "conditions"
+        return(global)
+    }
     
     datasets <- readRDS(rds_obj_fp)
     selected_dataset <- datasets[[1]]
