@@ -4,7 +4,7 @@ ui <- function() {
         global <- get_global()
         
         navbarPage(
-            theme = shinytheme("flatly"),
+            theme = shinythemes::shinytheme("flatly"),
             "OmicsLoupe",
             id="navbar",
             table_panel_ui(

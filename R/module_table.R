@@ -98,7 +98,7 @@ table_panel <- function(input, output, session, datasets, open_tab, sample_name=
         else if (input$contrast_type == "Variety") 
             stat_base <- paste(c("Arg", "Bel"), input$timepoint, sep="_")
         else 
-            stop("Unknown contrast type: ", contrast_type)
+            stop("Unknown contrast type: ", input$contrast_type)
         stat_base
     })
     
@@ -156,7 +156,8 @@ table_panel <- function(input, output, session, datasets, open_tab, sample_name=
     )
     
     table_vars$cached_full_table <- reactive({
-        cbind(SummarizedExperiment::rowData(datasets[[input$dataset]]) %>% data.frame(), assay(datasets[[input$dataset]]) %>% data.frame())
+        cbind(SummarizedExperiment::rowData(datasets[[input$dataset]]) %>% 
+                  data.frame(), assay(datasets[[input$dataset]]) %>% data.frame())
     })
     
     table_vars$cached_filtered_table <- filtered_table

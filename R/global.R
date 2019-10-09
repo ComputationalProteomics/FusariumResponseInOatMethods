@@ -103,7 +103,7 @@ get_global <- function() {
         unique() %>% 
         strsplit(",") %>% 
         unlist() %>% 
-        gsub("\\|.*", "", .) %>% 
+        gsub("\\|.*", "", .data$.) %>% 
         unique() %>% 
         sort()
     

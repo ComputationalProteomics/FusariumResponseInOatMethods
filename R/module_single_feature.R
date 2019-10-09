@@ -133,11 +133,21 @@ do_contrast_plot <- function(dataset, feature, assembly_id, split_condition, pro
     
     verbose <- TRUE
     if (verbose) {
-        message("Visualizing feature: ", feature, " assembly_id: ", assembly_id, " split_condition: ", split_condition, " protein_id_name: ", protein_id_name, " sub_id_name: ", sub_id_name)
+        message("Visualizing feature: ", feature, " assembly_id: ", assembly_id, 
+                " split_condition: ", split_condition, " protein_id_name: ", protein_id_name, 
+                " sub_id_name: ", sub_id_name)
     }
     
-    conds <- dataset %>% SummarizedExperiment::colData() %>% data.frame() %>% dplyr::select(split_condition) %>% unlist() %>% unname()
-    protein_col <- dataset %>% rowData() %>% data.frame() %>% dplyr::filter(UQ(as.name(protein_id_name)) == feature)
+    conds <- dataset %>% 
+        colData() %>% 
+        data.frame() %>% 
+        dplyr::select(split_condition) %>% 
+        unlist() %>% 
+        unname()
+    protein_col <- dataset %>% 
+        rowData() %>% 
+        data.frame() %>% 
+        dplyr::filter(UQ(as.name(protein_id_name)) == feature)
     
     se_slice <- dataset[which(rowData(dataset)[[sub_id_name]] == assembly_id), ]
     
@@ -149,9 +159,14 @@ do_contrast_plot <- function(dataset, feature, assembly_id, split_condition, pro
         cond=SummarizedExperiment::colData(se_slice)[[split_condition]],
         assay(se_slice) %>% t() %>% data.frame()
     ) %>% 
-        tidyr::gather("feature", "value", -cond)
+        tidyr::gather("feature", "value", -.data$cond)
     
-    ggplot(plot_df, aes(x=cond, y=value, color=feature)) + geom_boxplot() + geom_point(position=position_jitterdodge(jitter.width=0.05), size=3) + ggtitle(assembly_id)
+    ggplot(
+        plot_df, 
+        aes(x=.data$cond, y=.data$value, color=.data$feature)) + 
+            geom_boxplot() + 
+            geom_point(position=position_jitterdodge(jitter.width=0.05), size=3) + 
+            ggtitle(assembly_id)
 }
 
 # Intensity panel
@@ -197,7 +212,7 @@ do_intensity_plot <- function(datasetA, feature, assembly_id=NULL, datasetB=NULL
     ggplot(long_combined, aes(x=sample, y=.data$intensity, group=feature, color=feature)) + 
         ggtitle("Intensities") + 
         geom_point(na.rm=TRUE) + 
-        geom_line(aes(linetype=group))
+        geom_line(aes(linetype=.data$group))
 }
 
 # Alignment panel
