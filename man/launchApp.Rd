@@ -4,17 +4,20 @@
 \alias{launchApp}
 \title{launches the shinyAppDemo app}
 \usage{
-launchApp(query_proteins_arg_fp, query_proteins_bel_fp, search_fasta_fp,
-  rds_obj_fp)
+
+  launchApp(query_proteins_arg_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Arg-shortid_pep.fasta",
+  query_proteins_bel_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Bel-shortid_pep.fasta",
+  search_fasta_fp = "../../FusariumResponseInOatMethods_files/shiny_data/search_protein.fasta",
+  rds_obj_fp = "../../FusariumResponseInOatMethods_files/shiny_data/combined_flat_ses.rds")
 }
 \arguments{
-\item{query_proteins_arg_fp}{TODO}
+\item{query_proteins_arg_fp}{Argamak peptide assembly}
 
-\item{query_proteins_bel_fp}{TODO}
+\item{query_proteins_bel_fp}{Belinda peptide assembly}
 
-\item{search_fasta_fp}{TODO}
+\item{search_fasta_fp}{Annotation BLAST database}
 
-\item{rds_obj_fp}{TODO}
+\item{rds_obj_fp}{List of SummarizedExperiment objects saved to RDS file}
 }
 \value{
 shiny application object

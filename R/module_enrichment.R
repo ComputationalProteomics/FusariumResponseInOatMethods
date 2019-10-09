@@ -439,9 +439,9 @@ get_enrichment_status <- function(enrich_type, enrich_obj, used_cutoff) {
     result_string
 }
 
-make_universe <- function(row_data, id_col) {
+make_universe <- function(row_data, id_col, universe_pattern="^AT", trim_pattern="\\.\\d$") {
     all_ids <- unique(row_data[[id_col]])
-    at_ids <- all_ids[grepl("^AT", all_ids)] %>% gsub("\\.\\d$", "", .data$.)
+    at_ids <- gsub(trim_pattern, "", all_ids[grepl(universe_pattern, all_ids)])
     at_ids
 }
 

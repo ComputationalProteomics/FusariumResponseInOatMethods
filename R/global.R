@@ -59,7 +59,7 @@ get_global <- function() {
     search_strings <- load_string_set(search_fasta_fp, name_delims=c(" ", "\\|"))
     message("Done loading!")
     
-    features <- rowData(selected_dataset) %>% 
+    features_base <- rowData(selected_dataset) %>% 
         data.frame() %>% 
         dplyr::filter(!is.na(.data$ProteinID)) %>% 
         dplyr::select(.data$ProteinID) %>% 
@@ -69,8 +69,9 @@ get_global <- function() {
         sort() %>% 
         unique() %>% 
         strsplit(",") %>% 
-        unlist() %>% 
-        gsub("\\|.*", "", .data$.) %>% 
+        unlist()
+    
+    features <- gsub("\\|.*", "", features_base) %>% 
         unique() %>% 
         sort()
     

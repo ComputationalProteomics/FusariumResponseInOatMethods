@@ -2,10 +2,10 @@
 #'
 #' @export launchApp
 #' @return shiny application object
-#' @param query_proteins_arg_fp TODO
-#' @param query_proteins_bel_fp TODO
-#' @param search_fasta_fp TODO
-#' @param rds_obj_fp TODO
+#' @param query_proteins_arg_fp Argamak peptide assembly
+#' @param query_proteins_bel_fp Belinda peptide assembly
+#' @param search_fasta_fp Annotation BLAST database
+#' @param rds_obj_fp List of SummarizedExperiment objects saved to RDS file
 #' @import shiny SummarizedExperiment dplyr rlang
 launchApp <- function(
     query_proteins_arg_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Arg-shortid_pep.fasta",
@@ -19,6 +19,8 @@ launchApp <- function(
         search_fasta_fp = search_fasta_fp,
         rds_obj_fp = rds_obj_fp
     )
+    
+    ggplot2::theme_set(cowplot::theme_cowplot())
     
     if (is.null(any(c(query_proteins_arg_fp, query_proteins_bel_fp, search_fasta_fp, rds_obj_fp)))) {
         stop(sprintf(
