@@ -182,7 +182,7 @@ do_pair_plot <- function(sdf, colinfo, color_col, pairs=5, omit_samples=NULL, va
     PCAtools::pairsplot(p, components = 1:pairs, colby=color_col, pointSize = 2)
 }
 
-pca_panel <- function(input, output, session, table_vars) {
+multivarvis_panel <- function(input, output, session, table_vars) {
     
     observeEvent(input$mark_all_omitted, {
         updateSelectInput(session, "omit_samples", selected=colnames(datasets[[1]]))

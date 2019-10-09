@@ -45,19 +45,21 @@ get_global <- function() {
     
     if (is.null(rds_obj_fp)) {
         message("No rds_obj_fp found, returning default settings")
-        global$datasets <- "datasets"
-        global$features <- "features"
         global$all_cols <- "all_cols"
-        global$optional_display_cols <- "optional_display_cols"
-        global$default_display_cols <- "default_display_cols"
-        global$base_target <- "base_target"
-        global$optional_stat_fields <- "optional_stat_fields"
-        global$default_stat_fields <- "default_stat_fields"
-        global$timepoints <- "timepoints"
-        global$contrast_types <- "contrast_types"
         global$annot_types <- "annot_types"
-        global$expr_presence <- "expr_presence"
+        global$base_target <- "base_target"
         global$conditions <- "conditions"
+        global$contrast_types <- "contrast_types"
+        global$datasets <- "datasets"
+        global$default_display_cols <- "default_display_cols"
+        global$default_stat_fields <- "default_stat_fields"
+        global$expr_presence <- "expr_presence"
+        global$features <- "features"
+        global$optional_display_cols <- "optional_display_cols"
+        global$optional_stat_fields <- "optional_stat_fields"
+        global$query_proteins <- "query_proteins"
+        global$search_strings <- "search_strings"
+        global$timepoints <- "timepoints"
         return(global)
     }
     
@@ -118,19 +120,21 @@ get_global <- function() {
     
     conditions <- colnames(colData(datasets[[1]]))
     
-    global$datasets <- datasets
-    global$features <- features
     global$all_cols <- all_cols
-    global$optional_display_cols <- optional_display_cols
-    global$default_display_cols <- default_display_cols
-    global$base_target <- base_target
-    global$optional_stat_fields <- optional_stat_fields
-    global$default_stat_fields <- default_stat_fields
-    global$timepoints <- timepoints
-    global$contrast_types <- contrast_types
     global$annot_types <- annot_types
-    global$expr_presence <- expr_presence
+    global$base_target <- base_target
     global$conditions <- conditions
+    global$contrast_types <- contrast_types
+    global$datasets <- datasets
+    global$default_display_cols <- default_display_cols
+    global$default_stat_fields <- default_stat_fields
+    global$expr_presence <- expr_presence
+    global$features <- features
+    global$optional_display_cols <- optional_display_cols
+    global$optional_stat_fields <- optional_stat_fields
+    global$query_proteins <- query_proteins
+    global$search_strings <- search_strings
+    global$timepoints <- timepoints
     
     global
 }

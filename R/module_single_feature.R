@@ -1,7 +1,7 @@
 library(shiny)
 library(tidyverse)
 
-single_feature_panel_ui <- function(id, features, datasets_names) {
+single_feature_panel_ui <- function(id, features, datasets_names, conditions) {
     ns <- NS(id)
     
     tabPanel(
@@ -57,7 +57,7 @@ single_feature_panel_ui <- function(id, features, datasets_names) {
     )
 }
 
-single_feature_panel <- function(input, output, session, table_vars, datasets) {
+single_feature_panel <- function(input, output, session, table_vars, datasets, query_proteins, search_strings) {
     
     align <- reactiveVal(NULL)
     positions <- reactiveVal(NULL)

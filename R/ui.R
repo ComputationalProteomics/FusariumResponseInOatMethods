@@ -21,7 +21,12 @@ ui <- shinyUI(navbarPage(
         datasets=global$datasets,
         conditions=global$conditions
     ),
-    single_feature_panel_ui("SingleFeature", global$features, names(global$datasets)),
+    single_feature_panel_ui(
+        "SingleFeature", 
+        features=global$features, 
+        datasets_names=names(global$datasets),
+        conditions=global$conditions
+    ),
     enrichment_panel_ui("Enrichment"),
     about_panel_ui("About")
 ))
