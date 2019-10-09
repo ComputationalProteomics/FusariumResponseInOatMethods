@@ -6,11 +6,16 @@ After being made public, the most straight forward way should be:
 > devtools::install_github("Jakob37/FusariumResponseInOatMethods.git")
 ```
 
-For now, first perform a clone followed by a local installation (from Bash)
+For now, first retrieve the source code. This can be done in your web browser by navigating to the page https://github.com/Jakob37/FusariumResponseInOatMethods and selecting "Close or download". If using the terminal, you
+can obtain this by running
 
 ```{r}
-$ git clone git@github.com:Jakob37/FusariumResponseInOatMethods.git
-$ R
+$ https://github.com/Jakob37/FusariumResponseInOatMethods.git
+```
+
+Now open R and install the package. This requires that you have the R package `devtools` installed.
+
+```{r}
 > devtools::build("FusariumResponseInOatMethods/")
 > devtools::install_local("OatOmics_0.9.9.tar.gz")
 ```
@@ -24,21 +29,21 @@ OatOmics requires for objects to run.
 * searchProteins: The database containing reference proteins used for annotation
 * ses_obj: The R-object containing a list of SummarizedExperiment objects with the output from the Snakemake workflow
 
+These are all bundled into a zip-archive found at the link: https://lu.box.com/shared/static/8damc11jumvj20ei20jyql3rfjhwa8bd.zip
+Download and unzip this archive. In Linux this can be achieved by:
+
 ```{r}
-> OatOmics::launchApp(pathToArg, pathToBel, searchProteins, ses_obj)
+# OBS Linux and Mac only, Bash terminal
+$ wget https://lu.box.com/shared/static/8damc11jumvj20ei20jyql3rfjhwa8bd.zip
+$ unzip 8damc11jumvj20ei20jyql3rfjhwa8bd.zip
 ```
 
-When running this a new window should open in the browser and you could start inspecting the data.
+Now you should have the unzipped folder `oatomics_inputs` containing all the required input files. Now you are ready to run OatOmics. Note that if the data folder `oatomics_input` is not in your current working directory you need to adjust the path to it accordingly.
 
-# Previous information
+```{r}
+# In R
+> OatOmics::launchApp("oatomics_input")
+```
 
-Proposed way to present methods for the Fusarium in Oat paper.
+This should open in the browser and you are ready to start inspecting the data.
 
-Additional code would be:
-
-* OatOmics
-* Scripts used by the Snakemake workflow
-
-Data files
-
-Depending of what makes more sense it could be stored here or under ComputationalProteomics. I keep it here for now as my account allows private repositories.

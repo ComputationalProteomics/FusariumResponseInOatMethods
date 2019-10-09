@@ -7,11 +7,16 @@
 #' @param search_fasta_fp Annotation BLAST database
 #' @param rds_obj_fp List of SummarizedExperiment objects saved to RDS file
 #' @import shiny SummarizedExperiment dplyr rlang
-launchApp <- function(
-    query_proteins_arg_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Arg-shortid_pep.fasta",
-    query_proteins_bel_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Bel-shortid_pep.fasta",
-    search_fasta_fp = "../../FusariumResponseInOatMethods_files/shiny_data/search_protein.fasta",
-    rds_obj_fp = "../../FusariumResponseInOatMethods_files/shiny_data/combined_flat_ses.rds") {
+launchApp <- function(data_dir) {
+    # query_proteins_arg_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Arg-shortid_pep.fasta",
+    # query_proteins_bel_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Bel-shortid_pep.fasta",
+    # search_fasta_fp = "../../FusariumResponseInOatMethods_files/shiny_data/search_protein.fasta",
+    # rds_obj_fp = "../../FusariumResponseInOatMethods_files/shiny_data/combined_flat_ses.rds") {
+    
+    query_proteins_arg_fp <- sprintf("%s/%s", data_dir, "transcripts-shortid_fa_transdecoder-Arg-shortid_pep.fasta")
+    query_proteins_bel_fp <- sprintf("%s/%s", data_dir, "transcripts-shortid_fa_transdecoder-Bel-shortid_pep.fasta")
+    search_fasta_fp <- sprintf("%s/%s", data_dir, "search_protein.fasta")
+    rds_obj_fp <- sprintf("%s/%s", data_dir, "combined_flat_ses.rds")
     
     shiny::shinyOptions(
         query_proteins_arg_fp = query_proteins_arg_fp,

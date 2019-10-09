@@ -445,7 +445,7 @@ make_universe <- function(row_data, id_col, universe_pattern="^AT", trim_pattern
     at_ids
 }
 
-make_gene_list <- function(row_data, id_col, stat_col, filter_col=NULL, filter_thres=0.1) {
+make_gene_list <- function(row_data, id_col, stat_col, filter_col=NULL, filter_thres=0.1, universe_pattern="^AT", trim_pattern="\\.\\d$") {
     
     df <- row_data %>% data.frame()
     
@@ -456,9 +456,9 @@ make_gene_list <- function(row_data, id_col, stat_col, filter_col=NULL, filter_t
     df <- df %>% dplyr::select(c(id_col, stat_col))
     colnames(df) <- c("id_col", "stat_col")
     df <- df %>%
-        dplyr::filter(grepl("^AT", id_col)) %>%
+        dplyr::filter(grepl(universe_pattern, id_col)) %>%
         arrange(desc(stat_col)) %>%
-        mutate(id_col=gsub("\\.\\d$", "", id_col))
+        mutate(id_col=gsub(trim_pattern, "", id_col))
     geneList <- df$stat_col
     names(geneList) <- df$id_col
     geneList

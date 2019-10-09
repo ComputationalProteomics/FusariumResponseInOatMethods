@@ -5,7 +5,7 @@ ui <- function() {
         
         navbarPage(
             theme = shinythemes::shinytheme("flatly"),
-            "OmicsLoupe",
+            "OatOmics",
             id="navbar",
             table_panel_ui(
                 "Table", 
