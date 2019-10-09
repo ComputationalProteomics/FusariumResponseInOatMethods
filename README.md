@@ -6,18 +6,17 @@ After being made public, the most straight forward way should be:
 > devtools::install_github("Jakob37/FusariumResponseInOatMethods.git")
 ```
 
-For now, first retrieve the source code. This can be done in your web browser by navigating to the page https://github.com/Jakob37/FusariumResponseInOatMethods and selecting "Close or download". If using the terminal, you
-can obtain this by running
+For now, first retrieve the source code. This can be done in your web browser by navigating to the page https://github.com/Jakob37/FusariumResponseInOatMethods and selecting "Close or download" followed by "Download ZIP", and the unzipping it locally. Or, if you have access to the repository and SSH-keys added to GitHub:
 
 ```{r}
-$ https://github.com/Jakob37/FusariumResponseInOatMethods.git
+$ git@github.com:Jakob37/FusariumResponseInOatMethods.git
 ```
 
-Now open R and install the package. This requires that you have the R package `devtools` installed.
+Now open R and install the package. This requires that you have the R package `devtools` installed. Replace `X` with the current version number.
 
 ```{r}
 > devtools::build("FusariumResponseInOatMethods/")
-> devtools::install_local("OatOmics_0.9.9.tar.gz")
+> devtools::install_local("OatOmics_0.9.X.tar.gz")
 ```
 
 # Run OatOmics
