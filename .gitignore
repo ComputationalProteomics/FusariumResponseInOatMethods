@@ -1,6 +1,20 @@
+# File endings
+*.swp
+
+# Hidden
+supplementary/.idea/
+.snakemake/
+
 # Directories
 unused/
 shiny_data/
+data/
+output_analysis/
+output_setup/
 
 # Files
 R/shiny_data
+
+# Links
+supplementary/ProteinRollup
+supplementary/RWorkflowModules
