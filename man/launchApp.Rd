@@ -4,11 +4,7 @@
 \alias{launchApp}
 \title{launches the shinyAppDemo app}
 \usage{
-
-  launchApp(query_proteins_arg_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Arg-shortid_pep.fasta",
-  query_proteins_bel_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Bel-shortid_pep.fasta",
-  search_fasta_fp = "../../FusariumResponseInOatMethods_files/shiny_data/search_protein.fasta",
-  rds_obj_fp = "../../FusariumResponseInOatMethods_files/shiny_data/combined_flat_ses.rds")
+launchApp(data_dir)
 }
 \arguments{
 \item{query_proteins_arg_fp}{Argamak peptide assembly}

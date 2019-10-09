@@ -376,7 +376,7 @@ enrichment_panel <- function(input, output, session, dataset, enrich_vals) {
     })
 }
 
-
+#' @import org.At.tair.db
 perform_enrichment <- function(gene_list, universe, enrich_type="GOE", do_fdr=TRUE, cutoff=0.1, ontology="MF") {
     
     if (do_fdr) {

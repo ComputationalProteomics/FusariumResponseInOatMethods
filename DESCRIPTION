@@ -22,7 +22,6 @@ Imports:
     msaR,
     org.At.tair.db,
     PCAtools,
-    R6,
     readr,
     rlang,
     shiny,
