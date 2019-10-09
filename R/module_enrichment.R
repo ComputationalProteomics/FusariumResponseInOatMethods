@@ -1,5 +1,3 @@
-library(shiny)
-
 goe_plot_types <- c(
     "GOdot",
     "GObar",

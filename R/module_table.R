@@ -1,6 +1,3 @@
-library(shiny)
-library(tidyverse)
-
 table_panel_ui <- function(
     id, timepoints, annot_types, expr_presence, datasets, contrast_types, default_display_cols, optional_display_cols, 
     default_stat_fields, optional_stat_fields) {

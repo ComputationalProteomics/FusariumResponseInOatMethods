@@ -1,9 +1,3 @@
-library(shiny)
-library(tidyverse)
-library(PCAtools)
-
-# source("CraftOmics/MultivarVis.R")
-
 do_pca <- function(sdf, cond) {
     mv$pca(sdf, cond)
 }

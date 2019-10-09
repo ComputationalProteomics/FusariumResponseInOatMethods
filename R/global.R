@@ -1,46 +1,13 @@
-in_package <- T
-
-if (!in_package) {
-    source("module_enrichment.R")
-    source("module_multivar_vis.R")
-    source("module_about.R")
-    source("module_table.R")
-    source("module_single_feature.R")
-    
-    print(getwd())
-    
-    shiny::shinyOptions(
-        query_proteins_arg_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Arg-shortid_pep.fasta",
-        query_proteins_bel_fp = "../../FusariumResponseInOatMethods_files/shiny_data/transcripts-shortid_fa_transdecoder-Bel-shortid_pep.fasta",
-        search_fasta_fp = "../../FusariumResponseInOatMethods_files/shiny_data/search_protein.fasta",
-        rds_obj_fp = "../../FusariumResponseInOatMethods_files/shiny_data/combined_flat_ses.rds"
-    )
-}
-
-# library(R6)
-# library(shiny)
-# library(tidyverse)
-# library(SummarizedExperiment)
-# library(DT)
-# library(shinythemes)
-# library(enrichplot)
-# library(limma)
-# library(clusterProfiler)
-# library(enrichplot)
-# library(msaR)
-# library(org.At.tair.db)
-# library(ggdendro)
-
 get_global <- function() {
 
     global <- list()
     
-    # Paths
+    query_proteins_arg_fp <- shiny::getShinyOption("query_proteins_arg_fp", NULL)
+    query_proteins_bel_fp <- shiny::getShinyOption("query_proteins_bel_fp", NULL)
+    search_fasta_fp <- shiny::getShinyOption("search_fasta_fp", NULL)
+    rds_obj_fp <- shiny::getShinyOption("rds_obj_fp", NULL)
     
-    query_proteins_arg_fp <- shiny::getShinyOption("query_proteins_arg_fp")
-    query_proteins_bel_fp <- shiny::getShinyOption("query_proteins_bel_fp")
-    search_fasta_fp <- shiny::getShinyOption("search_fasta_fp")
-    rds_obj_fp <- shiny::getShinyOption("rds_obj_fp")
+    message("Loaded: ", rds_obj_fp)
     
     if (is.null(rds_obj_fp)) {
         

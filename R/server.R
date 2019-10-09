@@ -1,5 +1,3 @@
-library(shiny)
-
 server <- shinyServer(function(session, input, output) {
     
     global <- get_global()

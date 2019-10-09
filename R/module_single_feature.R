@@ -1,6 +1,3 @@
-library(shiny)
-library(tidyverse)
-
 single_feature_panel_ui <- function(id, features, datasets_names, conditions) {
     ns <- NS(id)
     

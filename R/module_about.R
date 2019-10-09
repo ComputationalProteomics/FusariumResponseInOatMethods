@@ -1,5 +1,3 @@
-library(shiny)
-
 about_panel_ui <- function(id) {
     ns <- NS(id)
     
