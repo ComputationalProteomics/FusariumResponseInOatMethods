@@ -1,11 +1,8 @@
-library(shiny)
-
-
 table_stats_plots <- c(
     "PValueHistogram"
 )
 
-
+#' @import ggplot2
 do_pval_hist <- function(data, stat_patterns, bins) {
     
     arg_col <- sprintf("%s.P.Value", stat_patterns[1])
@@ -20,7 +17,7 @@ do_pval_hist <- function(data, stat_patterns, bins) {
         theme_classic() +
         ggtitle(sprintf("Condition: %s (filtered)", stat_patterns[2]))
     
-    plot_grid(arg_phist, bel_phist, ncol=2)
+    cowplot::plot_grid(arg_phist, bel_phist, ncol=2)
 }
 
 

@@ -7,21 +7,27 @@ Authors@R: c(person("Jakob", "Willforss", email="jakob.willforss@immun.lth.se", 
 Description: 
     OatOmics allows interactively inspecting a proteogenomics oat dataset.
 Imports:
-    R6,
-    shiny,
-    tidyverse,
-    SummarizedExperiment,
-    DT,
-    shinythemes,
-    enrichplot,
-    msaR,
-    limma,
+    clusterProfiler,
     Biostrings,
     DECIPHER,
-    clusterProfiler,
-    org.At.tair.db,
+    dplyr,
+    DT,
+    enrichplot,
     ggdendro,
-    PCAtools
+    ggplot2,
+    graphics,
+    htmlwidgets,
+    limma,
+    msaR,
+    org.At.tair.db,
+    PCAtools,
+    R6,
+    readr,
+    rlang,
+    shiny,
+    shinythemes,
+    SummarizedExperiment,
+    tidyr
 Suggests:
     knitr
 VignetteBuilder: knitr

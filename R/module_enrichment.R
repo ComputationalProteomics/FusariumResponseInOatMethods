@@ -73,6 +73,7 @@ enrichment_panel_ui <- function(id) {
     )
 } 
 
+#' @import ggplot2
 do_enrich_plot <- function(plot_func, first_enrich, second_enrich, plot_type, stat_bases, 
                            cols=2, fold_first=NULL, fold_second=NULL, ...) {
     
@@ -112,18 +113,8 @@ do_enrich_plot <- function(plot_func, first_enrich, second_enrich, plot_type, st
             plt2 <- make_plot(second_enrich, 0.1, titles[2], plot_func)
     }
     
-    # if (plot_type == "Both" || plot_type == "Second") {
-    #     if (!is.null(fold_second)) {
-    #         plt2 <- plot_func(second_enrich, foldChange=fold_second, ...)
-    #     }
-    #     else {
-    #         plt2 <- plot_func(second_enrich, ...)
-    #     }
-    #     plt2 <- plt2 + ggtitle(titles[2])
-    # }
-
     if (plot_type == "Both") {
-        plot_grid(plt1, plt2, ncol=cols)
+        cowplot::plot_grid(plt1, plt2, ncol=cols)
     }
     else if (plot_type == "First") {
         plt1
@@ -172,8 +163,8 @@ trigger_enrich = function(table_vars, dataset, enrich_type, enrich_fdr, enrich_c
         filter_df_second <- filter_df_first
     }
     else {
-        filter_df_first <- table_vars$cached_full_table() %>% filter(UQ(as.name(sprintf("%s.adj.P.Val", stat_patterns[1]))) < separate_fdr_cutoff)
-        filter_df_second <- table_vars$cached_full_table() %>% filter(UQ(as.name(sprintf("%s.adj.P.Val", stat_patterns[2]))) < separate_fdr_cutoff)
+        filter_df_first <- table_vars$cached_full_table() %>% dplyr::filter(UQ(as.name(sprintf("%s.adj.P.Val", stat_patterns[1]))) < separate_fdr_cutoff)
+        filter_df_second <- table_vars$cached_full_table() %>% dplyr::filter(UQ(as.name(sprintf("%s.adj.P.Val", stat_patterns[2]))) < separate_fdr_cutoff)
     }
     
     # Separate FDR display goes here
@@ -221,6 +212,7 @@ trigger_enrich = function(table_vars, dataset, enrich_type, enrich_fdr, enrich_c
 }
 
 
+#' @import ggplot2
 enrichment_panel <- function(input, output, session, dataset, enrich_vals) {
 
     ns <- session$ns
@@ -260,7 +252,7 @@ enrichment_panel <- function(input, output, session, dataset, enrich_vals) {
     
     output$GObar <- renderPlot({
         do_enrich_plot(
-            barplot, 
+            graphics::barplot, 
             enrich_vals$out()$enrichment_obj_first, 
             enrich_vals$out()$enrichment_obj_second, 
             plot_type=input$displayed_plot, 
@@ -273,7 +265,7 @@ enrichment_panel <- function(input, output, session, dataset, enrich_vals) {
     output$GOnet <- renderPlot({
         
         do_enrich_plot(
-            cnetplot,
+            clusterProfiler::cnetplot,
             enrich_vals$out()$enrichment_obj_first, 
             enrich_vals$out()$enrichment_obj_second, 
             plot_type=input$displayed_plot,
@@ -287,7 +279,7 @@ enrichment_panel <- function(input, output, session, dataset, enrich_vals) {
     
     output$GOnetcirc <- renderPlot({
         do_enrich_plot(
-            cnetplot,
+            clusterProfiler::cnetplot,
             enrich_vals$out()$enrichment_obj_first, 
             enrich_vals$out()$enrichment_obj_second, 
             plot_type=input$displayed_plot,
@@ -303,7 +295,7 @@ enrichment_panel <- function(input, output, session, dataset, enrich_vals) {
     
     output$GOheat <- renderPlot({
         do_enrich_plot(
-            heatplot,
+            clusterProfiler::heatplot,
             enrich_vals$out()$enrichment_obj_first, 
             enrich_vals$out()$enrichment_obj_second, 
             plot_type=input$displayed_plot,
@@ -317,7 +309,7 @@ enrichment_panel <- function(input, output, session, dataset, enrich_vals) {
     
     output$GOmap <- renderPlot({
         do_enrich_plot(
-            emapplot, 
+            clusterProfiler::emapplot, 
             enrich_vals$out()$enrichment_obj_first, 
             enrich_vals$out()$enrichment_obj_second, 
             plot_type=input$displayed_plot, 
@@ -329,7 +321,7 @@ enrichment_panel <- function(input, output, session, dataset, enrich_vals) {
     
     output$GOridge <- renderPlot({
         do_enrich_plot(
-            ridgeplot, 
+            clusterProfiler::ridgeplot, 
             enrich_vals$out()$enrichment_obj_first, 
             enrich_vals$out()$enrichment_obj_second, 
             plot_type=input$displayed_plot, 
@@ -341,7 +333,7 @@ enrichment_panel <- function(input, output, session, dataset, enrich_vals) {
     
     output$GOgsea <- renderPlot({
         do_enrich_plot(
-            gseaplot, 
+            clusterProfiler::gseaplot, 
             enrich_vals$out()$enrichment_obj_first, 
             enrich_vals$out()$enrichment_obj_second, 
             plot_type=input$displayed_plot, 
@@ -356,7 +348,7 @@ enrichment_panel <- function(input, output, session, dataset, enrich_vals) {
     output$GOplot <- renderPlot({
         
         do_enrich_plot(
-            goplot, 
+            clusterProfiler::goplot, 
             enrich_vals$out()$enrichment_obj_first, 
             enrich_vals$out()$enrichment_obj_second, 
             plot_type=input$displayed_plot, 
@@ -366,7 +358,9 @@ enrichment_panel <- function(input, output, session, dataset, enrich_vals) {
         )
     })
     
-    output$GOupset <- renderPlot({ upsetplot(enrich_vals$out()$enrichment_obj_first) + ggtitle(enrich_vals$out()$stat_bases[1]) })
+    output$GOupset <- renderPlot({ 
+        enrichplot::upsetplot(enrich_vals$out()$enrichment_obj_first) + ggtitle(enrich_vals$out()$stat_bases[1]) 
+    })
     observeEvent(input$enrich_type, {
 
         if (is.null(input$enrich_type)) {
@@ -441,7 +435,7 @@ perform_enrichment <- function(gene_list, universe, enrich_type="GOE", do_fdr=TR
 get_enrichment_status <- function(enrich_type, enrich_obj, used_cutoff) {
     
     results_df <- enrich_obj@result
-    sig_count <- results_df %>% filter(p.adjust < used_cutoff) %>% nrow()
+    sig_count <- results_df %>% dplyr::filter(.data$p.adjust < used_cutoff) %>% nrow()
     tot_count <- nrow(results_df)
     result_string <- paste0(enrich_type, " enriched terms: ", sig_count, " / ", tot_count, " Cutoff: ", used_cutoff)
     result_string
@@ -458,13 +452,13 @@ make_gene_list <- function(row_data, id_col, stat_col, filter_col=NULL, filter_t
     df <- row_data %>% data.frame()
     
     if (!is.null(filter_col)) {
-        df <- df %>% filter(UQ(as.name(filter_col)) < filter_thres)
+        df <- df %>% dplyr::filter(UQ(as.name(filter_col)) < filter_thres)
     }
     
     df <- df %>% dplyr::select(c(id_col, stat_col))
     colnames(df) <- c("id_col", "stat_col")
     df <- df %>%
-        filter(grepl("^AT", id_col)) %>%
+        dplyr::filter(grepl("^AT", id_col)) %>%
         arrange(desc(stat_col)) %>%
         mutate(id_col=gsub("\\.\\d$", "", id_col))
     geneList <- df$stat_col

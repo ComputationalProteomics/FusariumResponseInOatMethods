@@ -40,7 +40,7 @@ single_feature_panel_ui <- function(id, features, datasets_names, conditions) {
                         tabPanel(
                             "Alignment",
                             textOutput(ns("mutation_status")),
-                            tabPanel("MSAR", msaROutput(ns("alignment_msar")))
+                            tabPanel("MSAR", msaR::msaROutput(ns("alignment_msar")))
                         ),
                         tabPanel(
                             "Contrast",
@@ -57,12 +57,13 @@ single_feature_panel_ui <- function(id, features, datasets_names, conditions) {
     )
 }
 
+#' @importFrom SummarizedExperiment colData rowData
 single_feature_panel <- function(input, output, session, table_vars, datasets, query_proteins, search_strings) {
     
     align <- reactiveVal(NULL)
     positions <- reactiveVal(NULL)
 
-    output$alignment_msar <- renderMsaR({
+    output$alignment_msar <- msaR::renderMsaR({
         align(make_proteogenomic_alignment(
             table_vars$dataset(),
             c(query_proteins, search_strings),
@@ -127,6 +128,7 @@ single_feature_panel <- function(input, output, session, table_vars, datasets, q
 
 # Contrast panel
 
+#' @import ggplot2
 do_contrast_plot <- function(dataset, feature, assembly_id, split_condition, protein_id_name="ProteinID", sub_id_name="External.IDs", only_4d=FALSE, verbose=FALSE) {
     
     verbose <- TRUE
@@ -135,7 +137,7 @@ do_contrast_plot <- function(dataset, feature, assembly_id, split_condition, pro
     }
     
     conds <- dataset %>% SummarizedExperiment::colData() %>% data.frame() %>% dplyr::select(split_condition) %>% unlist() %>% unname()
-    protein_col <- dataset %>% rowData() %>% data.frame() %>% filter(UQ(as.name(protein_id_name)) == feature)
+    protein_col <- dataset %>% rowData() %>% data.frame() %>% dplyr::filter(UQ(as.name(protein_id_name)) == feature)
     
     se_slice <- dataset[which(rowData(dataset)[[sub_id_name]] == assembly_id), ]
     
@@ -146,7 +148,8 @@ do_contrast_plot <- function(dataset, feature, assembly_id, split_condition, pro
     plot_df <- cbind(
         cond=SummarizedExperiment::colData(se_slice)[[split_condition]],
         assay(se_slice) %>% t() %>% data.frame()
-    ) %>% gather("feature", "value", -cond)
+    ) %>% 
+        tidyr::gather("feature", "value", -cond)
     
     ggplot(plot_df, aes(x=cond, y=value, color=feature)) + geom_boxplot() + geom_point(position=position_jitterdodge(jitter.width=0.05), size=3) + ggtitle(assembly_id)
 }
@@ -168,7 +171,8 @@ parse_dataset <- function(dataset, feature, feature_label, assembly_id=NULL, pro
     sub_assay <- assay(dataset)[matching_inds, , drop=FALSE] %>% data.frame()
     sub_assay$feature <- paste0(feature_label, seq_len(nrow(sub_assay)))
     sub_assay$group <- feature_label
-    long_df <- sub_assay %>% gather("sample", "intensity", -"feature", -"group")
+    long_df <- sub_assay %>% 
+        tidyr::gather("sample", "intensity", -"feature", -"group")
     long_df
 }
 
@@ -186,17 +190,18 @@ parse_to_long_df <- function(feature, datasetA, datasetB, assembly_id=NULL) {
     long_combined    
 }
 
+#' @import ggplot2
 do_intensity_plot <- function(datasetA, feature, assembly_id=NULL, datasetB=NULL) {
     
     long_combined <- parse_to_long_df(feature, datasetA, datasetB, assembly_id=assembly_id)
-    ggplot(long_combined, aes(x=sample, y=intensity, group=feature, color=feature)) + 
+    ggplot(long_combined, aes(x=sample, y=.data$intensity, group=feature, color=feature)) + 
         ggtitle("Intensities") + 
         geom_point(na.rm=TRUE) + 
         geom_line(aes(linetype=group))
 }
 
 # Alignment panel
-
+#' @importFrom rlang .data
 analyze_positions <- function(align, pattern1, pattern2, min_support=2) {
 
     get_site_string <- function(site_mat, pattern1, pattern2) {
@@ -254,8 +259,8 @@ make_proteogenomic_alignment <- function(dataset, search_sequences, target_featu
         rowData(dataset)$clean_peps <- get_clean_peptides(dataset, pep_seq_col)
         ms_peps <- rowData(dataset) %>%
             data.frame() %>%
-            filter(ProteinID == target_feature) %>%
-            dplyr::select(clean_peps) %>%
+            dplyr::filter(.data$ProteinID == target_feature) %>%
+            dplyr::select(.data$clean_peps) %>%
             unlist() %>%
             Biostrings::AAStringSet()
     }

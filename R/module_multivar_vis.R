@@ -99,10 +99,11 @@ do_pval_hist <- function(data, stat_patterns, bins) {
         theme_classic() +
         ggtitle(sprintf("Condition: %s (filtered)", stat_patterns[2]))
     
-    plot_grid(arg_phist, bel_phist, ncol=2)
+    cowplot::plot_grid(arg_phist, bel_phist, ncol=2)
 }
 
-
+#' @import ggdendro ggplot2
+#' @importFrom stats complete.cases
 do_dendogram = function(raw_data_m, raw_color_levels, labels=NULL, pick_top_variance=NULL, title="Dendogram", omit_samples=NULL) {
     
     if (!is.null(omit_samples)) {
@@ -126,7 +127,7 @@ do_dendogram = function(raw_data_m, raw_color_levels, labels=NULL, pick_top_vari
     # Calculate tree
     scaledTransposedMatrix <- scale(t(expr_m_nona), center=TRUE, scale=TRUE)
     hc <- stats::hclust(stats::dist(scaledTransposedMatrix), "ave")
-    dhc <- as.dendrogram(hc)
+    dhc <- stats::as.dendrogram(hc)
     # Note - Label order is shuffled within this object! Be careful with coloring.
     ddata <- ggdendro::dendro_data(dhc, type="rectangle")
     
@@ -137,10 +138,10 @@ do_dendogram = function(raw_data_m, raw_color_levels, labels=NULL, pick_top_vari
     
     # Visualize
     plt <- ggplot(segment(ddata)) +
-        geom_segment(aes(x=x, y=y, xend=xend, yend=yend)) +
+        geom_segment(aes(x=.data$x, y=.data$y, xend=.data$xend, yend=.data$yend)) +
         theme_dendro() +
         geom_text(data=label(ddata),
-                  aes(x=x, y=y, label=label, color=color),
+                  aes(x=.data$x, y=.data$y, label=.data$label, color=.data$color),
                   vjust=0.5, hjust=0, size=6) +
         coord_flip() +
         scale_y_reverse(expand=c(0.2, 0)) +
@@ -167,11 +168,11 @@ do_pca <- function(sdf, colinfo, color_col, var_filter=0.1, custom_names=NULL, s
                      pointSize = point_size, labSize = label_size)
 }
 
-do_pca_scree <- function(sdf, omit_samples=NULL) {
+do_pca_scree <- function(sdf, omit_samples=NULL, remove_var=0.1, components=1:10) {
     
     sdf <- sdf[complete.cases(sdf), ]
-    p <- PCAtools::pca(sdf, removeVar=0.1)
-    PCAtools::screeplot(p, components = 1:10)
+    p <- PCAtools::pca(sdf, removeVar=remove_var)
+    PCAtools::screeplot(p, components=components)
 }
 
 do_pair_plot <- function(sdf, colinfo, color_col, pairs=5, omit_samples=NULL, var_filter=0.1) {
@@ -182,7 +183,7 @@ do_pair_plot <- function(sdf, colinfo, color_col, pairs=5, omit_samples=NULL, va
     PCAtools::pairsplot(p, components = 1:pairs, colby=color_col, pointSize = 2)
 }
 
-multivarvis_panel <- function(input, output, session, table_vars) {
+multivarvis_panel <- function(input, output, session, table_vars, datasets) {
     
     observeEvent(input$mark_all_omitted, {
         updateSelectInput(session, "omit_samples", selected=colnames(datasets[[1]]))

@@ -4,7 +4,17 @@
 \alias{launchApp}
 \title{launches the shinyAppDemo app}
 \usage{
-launchApp()
+launchApp(query_proteins_arg_fp, query_proteins_bel_fp, search_fasta_fp,
+  rds_obj_fp)
+}
+\arguments{
+\item{query_proteins_arg_fp}{TODO}
+
+\item{query_proteins_bel_fp}{TODO}
+
+\item{search_fasta_fp}{TODO}
+
+\item{rds_obj_fp}{TODO}
 }
 \value{
 shiny application object

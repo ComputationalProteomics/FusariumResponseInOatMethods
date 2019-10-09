@@ -17,39 +17,24 @@ if (!in_package) {
     )
 }
 
-library(R6)
-library(shiny)
-library(tidyverse)
-library(SummarizedExperiment)
-library(DT)
-library(shinythemes)
-library(enrichplot)
-library(limma)
-library(clusterProfiler)
-library(enrichplot)
-library(msaR)
-library(org.At.tair.db)
-library(ggdendro)
+# library(R6)
+# library(shiny)
+# library(tidyverse)
+# library(SummarizedExperiment)
+# library(DT)
+# library(shinythemes)
+# library(enrichplot)
+# library(limma)
+# library(clusterProfiler)
+# library(enrichplot)
+# library(msaR)
+# library(org.At.tair.db)
+# library(ggdendro)
 
 get_global <- function() {
 
     global <- list()
     
-    # Libraries
-    library(R6)
-    library(shiny)
-    library(tidyverse)
-    library(SummarizedExperiment)
-    library(DT)
-    library(shinythemes)
-    library(enrichplot)
-    library(limma)
-    library(clusterProfiler)
-    library(enrichplot)
-    library(msaR)
-    library(org.At.tair.db)
-    library(ggdendro)
-
     # Paths
     
     query_proteins_arg_fp <- shiny::getShinyOption("query_proteins_arg_fp")
@@ -64,7 +49,7 @@ get_global <- function() {
             colData=data.frame(a=c(1,2), b=c(2,3))
         )
         
-        message("No rds_obj_fp found, returning default settings")
+        message("No rds_obj_fp found, returning default settings x")
         global$all_cols <- "all_cols"
         global$annot_types <- "annot_types"
         global$base_target <- "base_target"
@@ -109,8 +94,8 @@ get_global <- function() {
     
     features <- rowData(selected_dataset) %>% 
         data.frame() %>% 
-        filter(!is.na(ProteinID)) %>% 
-        dplyr::select(ProteinID) %>% 
+        dplyr::filter(!is.na(.data$ProteinID)) %>% 
+        dplyr::select(.data$ProteinID) %>% 
         unlist() %>% 
         as.character() %>% 
         unname() %>% 

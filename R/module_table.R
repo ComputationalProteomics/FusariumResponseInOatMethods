@@ -142,7 +142,7 @@ table_panel <- function(input, output, session, datasets, open_tab, sample_name=
             sprintf("%s.tsv", input$download_base_name)
         },
         content = function(fname) {
-            write_tsv(filtered_table(), fname)
+            readr::write_tsv(filtered_table(), fname)
         }
     )
     
@@ -151,12 +151,12 @@ table_panel <- function(input, output, session, datasets, open_tab, sample_name=
             sprintf("%s.settings.txt", input$download_base_name)
         },
         content = function(fname) {
-            write_tsv(current_settings(), fname)
+            readr::write_tsv(current_settings(), fname)
         }
     )
     
     table_vars$cached_full_table <- reactive({
-        cbind(rowData(datasets[[input$dataset]]) %>% data.frame(), assay(datasets[[input$dataset]]) %>% data.frame())
+        cbind(SummarizedExperiment::rowData(datasets[[input$dataset]]) %>% data.frame(), assay(datasets[[input$dataset]]) %>% data.frame())
     })
     
     table_vars$cached_filtered_table <- filtered_table
@@ -221,7 +221,7 @@ get_filter_table <- function(dataset, stat_bases, fold_type="all", fdr_cutoff_ar
         }
     }
 
-    filtered_df <- rowData(dataset) %>% data.frame()
+    filtered_df <- SummarizedExperiment::rowData(dataset) %>% data.frame()
 
     if (include_sdf) {
         filtered_df <- cbind(filtered_df, assay(dataset) %>% data.frame())
@@ -235,26 +235,26 @@ get_filter_table <- function(dataset, stat_bases, fold_type="all", fdr_cutoff_ar
 
     if (do_fdr_filter) {
         filtered_df <- filtered_df %>%
-            filter(fold_filter(
+            dplyr::filter(fold_filter(
                 UQ(as.name(sprintf("%s.logFC", stat_bases[1]))),
                 UQ(as.name(sprintf("%s.logFC", stat_bases[2]))), fold_type)) %>%
-            filter(
+            dplyr::filter(
                 UQ(as.name(sprintf("%s.adj.P.Val", stat_bases[1]))) < fdr_cutoff_arg &
                     UQ(as.name(sprintf("%s.adj.P.Val", stat_bases[2]))) < fdr_cutoff_bel)
     }
 
     if (annotation_presence != "all") {
-        filtered_df <- filtered_df %>% filter(annot_type == annotation_presence)
+        filtered_df <- filtered_df %>% dplyr::filter(.data$annot_type == annotation_presence)
     }
 
     if (argamak_expr != "ALL") {
         arg_filter_col <- sprintf("%s.presence", stat_bases[1])
-        filtered_df <- filtered_df %>% filter(UQ(as.name(arg_filter_col)) == argamak_expr)
+        filtered_df <- filtered_df %>% dplyr::filter(UQ(as.name(arg_filter_col)) == argamak_expr)
     }
 
     if (belinda_expr != "ALL") {
         bel_filter_col <- sprintf("%s.presence", stat_bases[2])
-        filtered_df <- filtered_df %>% filter(UQ(as.name(bel_filter_col)) == belinda_expr)
+        filtered_df <- filtered_df %>% dplyr::filter(UQ(as.name(bel_filter_col)) == belinda_expr)
     }
     
     filtered_df
@@ -275,12 +275,12 @@ show_table <- function(filtered_df, stat_bases, stat_cols=NULL, annot_cols=NULL,
     
     select_filter_df <- filtered_df %>% dplyr::select(target_fields)
     select_filter_df %>%
-        datatable(selection='single', class="compact cell-border", options=list(pageLength=default_length)) %>%
-        formatStyle(
+        DT::datatable(selection='single', class="compact cell-border", options=list(pageLength=default_length)) %>%
+        DT::formatStyle(
             c(sprintf("%s.logFC", stat_bases[1]), sprintf("%s.logFC", stat_bases[2])), 
-            color = JS("value > 0 ? 'red': 'blue'")
+            color = htmlwidgets::JS("value > 0 ? 'red': 'blue'")
         ) %>%
-        formatStyle(
+        DT::formatStyle(
             colnames(select_filter_df),
             fontSize = '80%'
         )
