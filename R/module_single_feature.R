@@ -134,17 +134,17 @@ do_contrast_plot <- function(dataset, feature, assembly_id, split_condition, pro
         message("Visualizing feature: ", feature, " assembly_id: ", assembly_id, " split_condition: ", split_condition, " protein_id_name: ", protein_id_name, " sub_id_name: ", sub_id_name)
     }
     
-    conds <- dataset %>% colData() %>% data.frame() %>% dplyr::select(split_condition) %>% unlist() %>% unname()
+    conds <- dataset %>% SummarizedExperiment::colData() %>% data.frame() %>% dplyr::select(split_condition) %>% unlist() %>% unname()
     protein_col <- dataset %>% rowData() %>% data.frame() %>% filter(UQ(as.name(protein_id_name)) == feature)
     
     se_slice <- dataset[which(rowData(dataset)[[sub_id_name]] == assembly_id), ]
     
     if (only_4d) {
-        se_slice <- se_slice[, colData(se_slice)$time == "4d"]
+        se_slice <- se_slice[, SummarizedExperiment::colData(se_slice)$time == "4d"]
     }
     
     plot_df <- cbind(
-        cond=colData(se_slice)[[split_condition]],
+        cond=SummarizedExperiment::colData(se_slice)[[split_condition]],
         assay(se_slice) %>% t() %>% data.frame()
     ) %>% gather("feature", "value", -cond)
     

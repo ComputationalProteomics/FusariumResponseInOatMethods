@@ -161,7 +161,7 @@ table_panel <- function(input, output, session, datasets, open_tab, sample_name=
     
     table_vars$cached_filtered_table <- filtered_table
     table_vars$cached_sdf <- reactive({
-        filtered_table() %>% dplyr::select(colData(datasets[[input$dataset]])[[sample_name]])
+        filtered_table() %>% dplyr::select(SummarizedExperiment::colData(datasets[[input$dataset]])[[sample_name]])
     })
     
     table_vars$dataset <- reactive({

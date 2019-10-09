@@ -34,7 +34,7 @@ multivarvis_panel_ui <- function(id, datasets, conditions) {
                     selectInput(ns("custom_names"), "Custom names", choices=c("none", conditions), selected="none"),
                     selectInput(ns("legend_position"), "Legend position", choices=c("none", "right"), selected="none"),
                     selectInput(ns("omit_samples"), "Omit samples", choices=colnames(datasets[[1]]), selected = NULL, multiple = TRUE),
-                    selectInput(ns("filter_type"), "Filter on type", choices=c("none", colnames(colData(datasets[[1]]))), selected="none"),
+                    selectInput(ns("filter_type"), "Filter on type", choices=c("none", colnames(SummarizedExperiment::colData(datasets[[1]]))), selected="none"),
                     selectInput(ns("filter_type_levels"), "Levels to inspect", choices=NULL, selected=NULL, multiple=TRUE),
                     checkboxInput(ns("show_pca_settings"), "Show PCA settings", value=FALSE),
                     conditionalPanel(
@@ -193,7 +193,7 @@ multivarvis_panel <- function(input, output, session, table_vars) {
             updateSelectInput(session, "filter_type_levels", selected=NULL, choices=NULL)
         }
         else {
-            levels <- colData(datasets[[1]])[[input$filter_type]]
+            levels <- SummarizedExperiment::colData(datasets[[1]])[[input$filter_type]]
             updateSelectInput(session, "filter_type_levels", selected=levels, choices=levels)
         }
     })
@@ -202,7 +202,7 @@ multivarvis_panel <- function(input, output, session, table_vars) {
         sdf_raw <- table_vars$cached_sdf()
         
         if (input$filter_type != "none") {
-            sdf_raw <- sdf_raw[, colData(table_vars$dataset())[[input$filter_type]] %in% input$filter_type_levels]
+            sdf_raw <- sdf_raw[, SummarizedExperiment::colData(table_vars$dataset())[[input$filter_type]] %in% input$filter_type_levels]
         }
         
         if (!is.null(input$omit_samples)) {
@@ -214,7 +214,7 @@ multivarvis_panel <- function(input, output, session, table_vars) {
     })
     
     target_ddf <- reactive({
-        ddf_raw <- colData(table_vars$dataset()) %>% data.frame()
+        ddf_raw <- SummarizedExperiment::colData(table_vars$dataset()) %>% data.frame()
         if (any(colnames(table_vars$cached_sdf()) != colnames(target_sdf()))) {
             ddf_raw[colnames(table_vars$cached_sdf()) %in% colnames(target_sdf()), ]
         }

@@ -1,4 +1,4 @@
-in_package <- F
+in_package <- T
 
 if (!in_package) {
     source("module_enrichment.R")
@@ -16,6 +16,20 @@ if (!in_package) {
         rds_obj_fp = "../../FusariumResponseInOatMethods_files/shiny_data/combined_flat_ses.rds"
     )
 }
+
+library(R6)
+library(shiny)
+library(tidyverse)
+library(SummarizedExperiment)
+library(DT)
+library(shinythemes)
+library(enrichplot)
+library(limma)
+library(clusterProfiler)
+library(enrichplot)
+library(msaR)
+library(org.At.tair.db)
+library(ggdendro)
 
 get_global <- function() {
 
@@ -44,13 +58,19 @@ get_global <- function() {
     rds_obj_fp <- shiny::getShinyOption("rds_obj_fp")
     
     if (is.null(rds_obj_fp)) {
+        
+        se <- SummarizedExperiment::SummarizedExperiment(
+            assays=list(a=matrix(c(1,2,3,4), ncol=2)),
+            colData=data.frame(a=c(1,2), b=c(2,3))
+        )
+        
         message("No rds_obj_fp found, returning default settings")
         global$all_cols <- "all_cols"
         global$annot_types <- "annot_types"
         global$base_target <- "base_target"
         global$conditions <- "conditions"
         global$contrast_types <- "contrast_types"
-        global$datasets <- "datasets"
+        global$datasets <- list(a=se, b=se)
         global$default_display_cols <- "default_display_cols"
         global$default_stat_fields <- "default_stat_fields"
         global$expr_presence <- "expr_presence"
@@ -118,7 +138,7 @@ get_global <- function() {
     annot_types <- c("all", unique(rowData(datasets[[1]])$annot_type))
     expr_presence <- c("ALL", "BOTH", "NONE", "HIGHONLY", "LOWONLY")
     
-    conditions <- colnames(colData(datasets[[1]]))
+    conditions <- colnames(SummarizedExperiment::colData(datasets[[1]]))
     
     global$all_cols <- all_cols
     global$annot_types <- annot_types
