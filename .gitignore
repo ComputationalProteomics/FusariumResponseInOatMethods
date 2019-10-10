@@ -4,6 +4,7 @@
 # Hidden
 supplementary/.idea/
 .snakemake/
+.Rhistory
 
 # Directories
 unused/
@@ -11,6 +12,7 @@ shiny_data/
 data/
 output_analysis/
 output_setup/
+output_validation_run/
 
 # Files
 R/shiny_data
