@@ -11,7 +11,7 @@ get_global <- function() {
     
     if (is.null(rds_obj_fp)) {
         
-        se <- SummarizedExperiment::SummarizedExperiment(
+        dummy_se <- SummarizedExperiment::SummarizedExperiment(
             assays=list(a=matrix(c(1,2,3,4), ncol=2)),
             colData=data.frame(a=c(1,2), b=c(2,3))
         )
@@ -22,7 +22,7 @@ get_global <- function() {
         global$base_target <- "base_target"
         global$conditions <- "conditions"
         global$contrast_types <- "contrast_types"
-        global$datasets <- list(a=se, b=se)
+        global$datasets <- list(a=dummy_se, b=dummy_se)
         global$default_display_cols <- "default_display_cols"
         global$default_stat_fields <- "default_stat_fields"
         global$expr_presence <- "expr_presence"
