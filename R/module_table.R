@@ -21,8 +21,8 @@ table_panel_ui <- function(
                         sprintf("input['%s'] == 1", ns("show_settings")),
 
                         selectInput(ns("dataset"), "Dataset", choices=names(datasets), selected=names(datasets)[1]),
-                        selectInput(ns("timepoint"), "Timepoint", choices=timepoints, selected="2d"),
-                        selectInput(ns("contrast_type"), "Contrast type", choices=contrast_types, selected="Variety"),
+                        selectInput(ns("timepoint"), "Timepoint", choices=timepoints, selected="4d"),
+                        selectInput(ns("contrast_type"), "Contrast type", choices=contrast_types, selected="Infection"),
 
                         checkboxInput(ns("do_fdr_filter"), "Do FDR and fold filtering", value=FALSE),
                         conditionalPanel(
