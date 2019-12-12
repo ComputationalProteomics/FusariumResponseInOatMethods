@@ -30,6 +30,11 @@ server <- shinyServer(function(session, input, output) {
         search_strings=global$search_strings
     )
 
+    callModule(
+        module=about_panel,
+        id="About/Help"
+    )
+    
     observeEvent(openTab(), {
         updateTabsetPanel(session, "navbar", openTab())
     })

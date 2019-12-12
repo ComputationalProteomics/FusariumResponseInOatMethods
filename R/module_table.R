@@ -16,41 +16,40 @@ table_panel_ui <- function(
                 wellPanel(
                     style = "float:left;",
                     
-                    checkboxInput(ns("show_settings"), "Show settings", value=TRUE),
+                    # checkboxInput(ns("show_settings"), "Show settings", value=TRUE),
+                    # conditionalPanel(
+                        # sprintf("input['%s'] == 1", ns("show_settings")),
+
+                    selectInput(ns("dataset"), "Dataset", choices=names(datasets), selected=names(datasets)[1]),
+                    selectInput(ns("timepoint"), "Timepoint", choices=timepoints, selected="4d"),
+                    selectInput(ns("contrast_type"), "Contrast type", choices=contrast_types, selected="Infection"),
+
+                    checkboxInput(ns("do_fdr_filter"), "Do FDR and fold filtering", value=FALSE),
                     conditionalPanel(
-                        sprintf("input['%s'] == 1", ns("show_settings")),
+                        sprintf("input['%s'] == 1", ns("do_fdr_filter")),
+                        selectInput(ns("reg_type"), "Regulation", choices=c("all", "same", "contra"), selected="all"),
+                        sliderInput(ns("fdr_cutoff_argamak"), "FDR cutoff cond. 1", value=0.1, step=0.01, min=0, max=1),
+                        sliderInput(ns("fdr_cutoff_belinda"), "FDR cutoff cond. 2", value=0.1, step=0.01, min=0, max=1)
+                    ),
 
-                        selectInput(ns("dataset"), "Dataset", choices=names(datasets), selected=names(datasets)[1]),
-                        selectInput(ns("timepoint"), "Timepoint", choices=timepoints, selected="4d"),
-                        selectInput(ns("contrast_type"), "Contrast type", choices=contrast_types, selected="Infection"),
+                    checkboxInput(ns("trunc_long"), "Truncate long strings", value=TRUE),
 
-                        checkboxInput(ns("do_fdr_filter"), "Do FDR and fold filtering", value=FALSE),
-                        conditionalPanel(
-                            sprintf("input['%s'] == 1", ns("do_fdr_filter")),
-                            selectInput(ns("reg_type"), "Regulation", choices=c("all", "same", "contra"), selected="all"),
-                            sliderInput(ns("fdr_cutoff_argamak"), "FDR cutoff cond. 1", value=0.1, step=0.01, min=0, max=1),
-                            sliderInput(ns("fdr_cutoff_belinda"), "FDR cutoff cond. 2", value=0.1, step=0.01, min=0, max=1)
-                        ),
+                    checkboxInput(ns("do_annot_filter"), "Do annotation filtering", value=FALSE),
+                    conditionalPanel(
+                        sprintf("input['%s'] == 1", ns("do_annot_filter")),
+                        selectInput(ns("annot_type"), "Annotation presence", choices=annot_types, selected=annot_types[1]),
+                        selectInput(ns("arg_expr_pres"), "Cond. 1 expression presence", choices=expr_presence, selected="ALL"),
+                        selectInput(ns("bel_expr_pres"), "Cond. 2 expression presence", choices=expr_presence, selected="ALL")
+                    ),
 
-                        checkboxInput(ns("trunc_long"), "Truncate long strings", value=TRUE),
+                    selectInput(ns("table_add_shown_fields"), "Additional shown fields", choices=optional_display_cols, selected=default_display_cols, multiple=TRUE),
+                    selectInput(ns("table_add_stat_fields"), "Additional stat fields", choices=optional_stat_fields, selected=default_stat_fields, multiple=TRUE),
 
-                        checkboxInput(ns("do_annot_filter"), "Do annotation filtering", value=FALSE),
-                        conditionalPanel(
-                            sprintf("input['%s'] == 1", ns("do_annot_filter")),
-                            selectInput(ns("annot_type"), "Annotation presence", choices=annot_types, selected=annot_types[1]),
-                            selectInput(ns("arg_expr_pres"), "Argamak expression presence", choices=expr_presence, selected="ALL"),
-                            selectInput(ns("bel_expr_pres"), "Belinda expression presence", choices=expr_presence, selected="ALL")
-                        ),
-
-                        selectInput(ns("table_add_shown_fields"), "Additional shown fields", choices=optional_display_cols, selected=default_display_cols, multiple=TRUE),
-                        selectInput(ns("table_add_stat_fields"), "Additional stat fields", choices=optional_stat_fields, selected=default_stat_fields, multiple=TRUE),
-
-                        actionButton(ns("button_show_align"), "Do Align"),
-                        textInput(ns("download_base_name"), "Download name", value="current_data"),
-                        downloadButton(ns("download_current"), "Download selection"),
-                        downloadButton(ns("download_settings"), "Download settings"),
-                        textOutput(ns("table_enrichment_status"))
-                    )
+                    actionButton(ns("button_show_align"), "Do Align"),
+                    # textInput(ns("download_base_name"), "Download name", value="current_data"),
+                    downloadButton(ns("download_current"), "Download selection"),
+                    textOutput(ns("table_enrichment_status"))
+                    # )
                 ),
                 fluidPage(
                     style = "flex-grow:1; resize:horizontal; overflow-x: scroll; overflow-y: hidden;",
@@ -136,19 +135,10 @@ table_panel <- function(input, output, session, datasets, open_tab, sample_name=
 
     output$download_current <- downloadHandler(
         filename = function() { 
-            sprintf("%s.tsv", input$download_base_name)
+            sprintf("%s.tsv", "current_data")
         },
         content = function(fname) {
             readr::write_tsv(filtered_table(), fname)
-        }
-    )
-    
-    output$download_settings <- downloadHandler(
-        filename = function() {
-            sprintf("%s.settings.txt", input$download_base_name)
-        },
-        content = function(fname) {
-            readr::write_tsv(current_settings(), fname)
         }
     )
     

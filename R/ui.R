@@ -31,7 +31,7 @@ ui <- function() {
                 conditions=global$conditions
             ),
             enrichment_panel_ui("Enrichment"),
-            about_panel_ui("About")
+            about_panel_ui("About/Help")
         )
     })
 }

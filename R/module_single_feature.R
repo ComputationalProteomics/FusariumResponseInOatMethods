@@ -16,11 +16,11 @@ single_feature_panel_ui <- function(id, features, datasets_names, conditions) {
                     selectInput(ns("feature"), "Feature", choices=features, selected=features[1], width="300px"),
                     selectInput(ns("subid"), "SubID", choices=c(), selected=NULL, width="300px"),
                     
-                    conditionalPanel(
-                        sprintf("input['%s'] == 'Intensity'", ns("plot_tabs")),
-                        selectInput(ns("datasetA"), "Dataset A", choices=datasets_names, selected=datasets_names[1]),
-                        selectInput(ns("datasetB"), "Dataset B", choices=c("null", datasets_names), selected="null")
-                    ),
+                    # conditionalPanel(
+                    #     sprintf("input['%s'] == 'Intensity'", ns("plot_tabs")),
+                    #     selectInput(ns("datasetA"), "Dataset A", choices=datasets_names, selected=datasets_names[1]),
+                    #     selectInput(ns("datasetB"), "Dataset B", choices=c("null", datasets_names), selected="null")
+                    # ),
                     
                     conditionalPanel(
                         sprintf("input['%s'] == 'Contrast'", ns("plot_tabs")),
@@ -42,11 +42,11 @@ single_feature_panel_ui <- function(id, features, datasets_names, conditions) {
                         tabPanel(
                             "Contrast",
                             plotOutput(ns("ContrastPlots"), height=800)
-                        ),
-                        tabPanel(
-                            "Intensity",
-                            plotOutput(ns("IntensityPlots"), height=800)
                         )
+                        # tabPanel(
+                        #     "Intensity",
+                        #     plotOutput(ns("IntensityPlots"), height=800)
+                        # )
                     )
                 )
             )
@@ -91,25 +91,25 @@ single_feature_panel <- function(input, output, session, table_vars, datasets, q
         updateSelectInput(session, "subid", choices = entries)
     })
 
-    output$IntensityPlots <- renderPlot({
-
-        if (input$datasetA != input$datasetB && input$datasetB != "null") {
-
-            do_intensity_plot(
-                datasets[[input$datasetA]],
-                feature=input$feature,
-                datasetB=datasets[[input$datasetB]],
-                assembly_id=input$subid
-            )
-        }
-        else {
-            do_intensity_plot(
-                datasets[[input$datasetA]],
-                input$feature,
-                assembly_id=input$subid
-            )
-        }
-    })
+    # output$IntensityPlots <- renderPlot({
+    # 
+    #     if (input$datasetA != input$datasetB && input$datasetB != "null") {
+    # 
+    #         do_intensity_plot(
+    #             datasets[[input$datasetA]],
+    #             feature=input$feature,
+    #             datasetB=datasets[[input$datasetB]],
+    #             assembly_id=input$subid
+    #         )
+    #     }
+    #     else {
+    #         do_intensity_plot(
+    #             datasets[[input$datasetA]],
+    #             input$feature,
+    #             assembly_id=input$subid
+    #         )
+    #     }
+    # })
 
     output$ContrastPlots <- renderPlot({
 
