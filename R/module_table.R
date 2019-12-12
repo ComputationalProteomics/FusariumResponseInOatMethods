@@ -16,10 +16,6 @@ table_panel_ui <- function(
                 wellPanel(
                     style = "float:left;",
                     
-                    # checkboxInput(ns("show_settings"), "Show settings", value=TRUE),
-                    # conditionalPanel(
-                        # sprintf("input['%s'] == 1", ns("show_settings")),
-
                     selectInput(ns("dataset"), "Dataset", choices=names(datasets), selected=names(datasets)[1]),
                     selectInput(ns("timepoint"), "Timepoint", choices=timepoints, selected="4d"),
                     selectInput(ns("contrast_type"), "Contrast type", choices=contrast_types, selected="Infection"),
@@ -46,10 +42,8 @@ table_panel_ui <- function(
                     selectInput(ns("table_add_stat_fields"), "Additional stat fields", choices=optional_stat_fields, selected=default_stat_fields, multiple=TRUE),
 
                     actionButton(ns("button_show_align"), "Do Align"),
-                    # textInput(ns("download_base_name"), "Download name", value="current_data"),
                     downloadButton(ns("download_current"), "Download selection"),
                     textOutput(ns("table_enrichment_status"))
-                    # )
                 ),
                 fluidPage(
                     style = "flex-grow:1; resize:horizontal; overflow-x: scroll; overflow-y: hidden;",

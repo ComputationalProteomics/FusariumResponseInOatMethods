@@ -26,7 +26,6 @@ multivarvis_panel_ui <- function(id, datasets, conditions) {
                     selectInput(ns("vis_type"), "Visualization", choices=multi_vis_plots, selected="PCA"),
                     selectInput(ns("pca_condition"), "Condition", choices=conditions, selected=conditions[1]),
                     selectInput(ns("custom_names"), "Custom names", choices=c("none", conditions), selected="none"),
-                    # selectInput(ns("legend_position"), "Legend position", choices=c("none", "right"), selected="none"),
                     selectInput(ns("omit_samples"), "Omit samples", choices=colnames(datasets[[1]]), selected = NULL, multiple = TRUE),
                     selectInput(ns("filter_type"), "Filter on type", choices=c("none", colnames(SummarizedExperiment::colData(datasets[[1]]))), selected="none"),
                     selectInput(ns("filter_type_levels"), "Levels to inspect", choices=NULL, selected=NULL, multiple=TRUE),

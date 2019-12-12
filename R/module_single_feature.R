@@ -16,12 +16,6 @@ single_feature_panel_ui <- function(id, features, datasets_names, conditions) {
                     selectInput(ns("feature"), "Feature", choices=features, selected=features[1], width="300px"),
                     selectInput(ns("subid"), "SubID", choices=c(), selected=NULL, width="300px"),
                     
-                    # conditionalPanel(
-                    #     sprintf("input['%s'] == 'Intensity'", ns("plot_tabs")),
-                    #     selectInput(ns("datasetA"), "Dataset A", choices=datasets_names, selected=datasets_names[1]),
-                    #     selectInput(ns("datasetB"), "Dataset B", choices=c("null", datasets_names), selected="null")
-                    # ),
-                    
                     conditionalPanel(
                         sprintf("input['%s'] == 'Contrast'", ns("plot_tabs")),
                         selectInput(ns("contrast_dataset"), "Dataset", choices=datasets_names, selected=datasets_names[1]),
@@ -43,10 +37,6 @@ single_feature_panel_ui <- function(id, features, datasets_names, conditions) {
                             "Contrast",
                             plotOutput(ns("ContrastPlots"), height=800)
                         )
-                        # tabPanel(
-                        #     "Intensity",
-                        #     plotOutput(ns("IntensityPlots"), height=800)
-                        # )
                     )
                 )
             )

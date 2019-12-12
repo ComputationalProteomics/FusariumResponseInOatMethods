@@ -39,25 +39,16 @@ enrichment_panel_ui <- function(id) {
                     selectInput(ns("enrich_type"), "Enrichment type", choices = c("GOE", "GSEA"), selected = "GOE"),
                     selectInput(ns("ontology"), "Ontology", choices=c("MF", "CC", "BP", "ALL"), selected="MF"),
                     selectInput(ns("enrichment_plot"), "Enrichment plot", choices=goe_plot_types, selected=goe_plot_types[1]),
-                    # checkboxInput(ns("separate_fdr_display"), "Separate FDR display", value=FALSE),
-                    # conditionalPanel(
-                    #     sprintf("input['%s'] == 1", ns("separate_fdr_display")),
-                    # sliderInput(ns("sep_fdr_cutoff"), "FDR cutoff", value=0.1, min=0, max=1, step=0.01)
-                    # ),
                     checkboxInput(ns("enrich_stat_options"), "Show stat options", value=FALSE),
                     conditionalPanel(
                         sprintf("input['%s'] == 1", ns("enrich_stat_options")),
                         checkboxInput(ns("enrich_fdr"), "Use BH FDR", value = TRUE),
                         sliderInput(ns("enrich_cutoff"), "Cutoff", min=0, max=1, step=0.01, value=0.1)
                     ),
-                    # checkboxInput(ns("enrich_display_options"), "Show display options", value=FALSE),
-                    # conditionalPanel(
-                    #     sprintf("input['%s'] == 1", ns("enrich_display_options")),
                     selectInput(ns("displayed_plot"), "Displayed plot", choices=c("Both", "First", "Second"), selected="Both"),
                     numericInput(ns("plot_cols"), "Plot cols", value=1, step=1, min=1, max=2),
                     numericInput(ns("enrichment_plot_height"), "Plot height", value=500, min=0, max=5000, step=50),
                     numericInput(ns("max_display_terms"), "Display terms", value=30),
-                    # ),
                     div(textOutput(ns("enrichment_status")))
                 ),
                 fluidPage(
@@ -152,22 +143,14 @@ enrichment_server <- function(input, output, session, table_vars) {
 }
 
 trigger_enrich = function(table_vars, dataset, enrich_type, enrich_fdr, enrich_cutoff, ontology, stat_patterns) {
-    # trigger_enrich = function(table_vars, dataset, enrich_type, enrich_fdr, enrich_cutoff, ontology, stat_patterns, separate_fdr_display=FALSE, separate_fdr_cutoff=0.1) {
-        
+
     enrich_vars <- list()
     enrich_vars$enrichment_status <- "Processing enrichment"
     
-    # if (!separate_fdr_display) {
     filter_df_first <- table_vars$cached_filtered_table()
     filter_df_second <- filter_df_first
-    # }
-    # else {
-    #     filter_df_first <- table_vars$cached_full_table() %>% dplyr::filter(UQ(as.name(sprintf("%s.adj.P.Val", stat_patterns[1]))) < separate_fdr_cutoff)
-    #     filter_df_second <- table_vars$cached_full_table() %>% dplyr::filter(UQ(as.name(sprintf("%s.adj.P.Val", stat_patterns[2]))) < separate_fdr_cutoff)
-    # }
     
     # Separate FDR display goes here
-    
     showNotification(
         paste0("Performing ", enrich_type ," enrichment for ", nrow(filter_df_first), " and ", nrow(filter_df_second), 
                " features, it can take a few moments..."),
