@@ -57,7 +57,7 @@ $ singularity build oatomics_container.img Singularity
 When setup it can be executed by the following:
 
 ```
-$ singularity run
+$ singularity run oatomics_container.img
 ```
 
 This will show you a message that the server has started running at an address (such as `127.0.0.1:3434` with some different last four digits). Navigate to your browser and use this address to start using OatOmics.
