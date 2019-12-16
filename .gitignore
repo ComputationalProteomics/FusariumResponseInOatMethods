@@ -1,5 +1,7 @@
 # File endings
 *.swp
+*.Rproj
+.Rbuildignore
 
 # Hidden
 supplementary/.idea/
@@ -20,3 +22,4 @@ R/shiny_data
 # Links
 supplementary/ProteinRollup
 supplementary/RWorkflowModules
+.Rproj.user

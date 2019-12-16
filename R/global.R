@@ -111,5 +111,3 @@ get_global <- function() {
     
     global
 }
-
-

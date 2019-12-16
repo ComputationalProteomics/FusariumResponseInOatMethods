@@ -15,6 +15,7 @@ single_feature_panel_ui <- function(id, features, datasets_names, conditions) {
                     style = "float:left;",
                     selectInput(ns("feature"), "Feature", choices=features, selected=features[1], width="300px"),
                     selectInput(ns("subid"), "SubID", choices=c(), selected=NULL, width="300px"),
+                    checkboxInput(ns("align_only_transcript"), "Align only SubID IDs", value = FALSE),
                     
                     conditionalPanel(
                         sprintf("input['%s'] == 'Contrast'", ns("plot_tabs")),
@@ -55,7 +56,11 @@ single_feature_panel <- function(input, output, session, table_vars, datasets, q
             table_vars$dataset(),
             c(query_proteins, search_strings),
             input$feature,
-            input$dimension[1]
+            # input$dimension[1]
+            # input$feature,
+            input$subid,
+            input$dimension[1],
+            only_align_transcript = input$align_only_transcript
         ))
         positions(analyze_positions(align(), pattern1="^Ag", pattern2="^Be"))
         message("Identified positions: ", paste(positions(), collapse=", "))
@@ -78,28 +83,9 @@ single_feature_panel <- function(input, output, session, table_vars, datasets, q
     observeEvent(input$feature, {
         df <- rowData(table_vars$dataset()) %>% data.frame()
         entries <- df[grepl(input$feature, df$ProteinID), ]$External.IDs
-        updateSelectInput(session, "subid", choices = entries)
+        sorted_entries <- lapply(entries, function(entry) {paste(sort(strsplit(entry, ",")[[1]]), collapse=",")}) %>% unlist() %>% sort()
+        updateSelectInput(session, "subid", choices = sorted_entries)
     })
-
-    # output$IntensityPlots <- renderPlot({
-    # 
-    #     if (input$datasetA != input$datasetB && input$datasetB != "null") {
-    # 
-    #         do_intensity_plot(
-    #             datasets[[input$datasetA]],
-    #             feature=input$feature,
-    #             datasetB=datasets[[input$datasetB]],
-    #             assembly_id=input$subid
-    #         )
-    #     }
-    #     else {
-    #         do_intensity_plot(
-    #             datasets[[input$datasetA]],
-    #             input$feature,
-    #             assembly_id=input$subid
-    #         )
-    #     }
-    # })
 
     output$ContrastPlots <- renderPlot({
 
@@ -125,17 +111,6 @@ do_contrast_plot <- function(dataset, feature, assembly_id, split_condition, pro
                 " sub_id_name: ", sub_id_name)
     }
     
-    conds <- dataset %>% 
-        colData() %>% 
-        data.frame() %>% 
-        dplyr::select(split_condition) %>% 
-        unlist() %>% 
-        unname()
-    protein_col <- dataset %>% 
-        rowData() %>% 
-        data.frame() %>% 
-        dplyr::filter(UQ(as.name(protein_id_name)) == feature)
-    
     se_slice <- dataset[which(rowData(dataset)[[sub_id_name]] == assembly_id), ]
     
     if (only_4d) {
@@ -155,8 +130,6 @@ do_contrast_plot <- function(dataset, feature, assembly_id, split_condition, pro
             geom_point(position=position_jitterdodge(jitter.width=0.05), size=3) + 
             ggtitle(assembly_id)
 }
-
-# Intensity panel
 
 parse_dataset <- function(dataset, feature, feature_label, assembly_id=NULL, protein_id_name="ProteinID", sub_id_name="External.IDs") {
     
@@ -251,11 +224,22 @@ analyze_positions <- function(align, pattern1, pattern2, min_support=2) {
     }
 }
 
-make_proteogenomic_alignment <- function(dataset, search_sequences, target_feature, width, prompt_val=NULL, protein_id_col="ProteinID", pep_seq_col="Peptide.Sequence") {
-    
+# target_feature corresponds to the BLAST assigned annotation
+# subid corresponds to the specific transcripts which all matched to this BLAST annotation
+# make_proteogenomic_alignment <- function(dataset, search_sequences, target_feature, width, prompt_val=NULL, 
+#                                          protein_id_col="ProteinID", pep_seq_col="Peptide.Sequence") {
+    make_proteogenomic_alignment <- function(dataset, search_sequences, target_feature, subid, width, prompt_val=NULL,
+                                             protein_id_col="ProteinID", pep_seq_col="Peptide.Sequence", only_align_transcript=FALSE) {
+
     blast_hit_protein_ids <- limma::strsplit2(rowData(dataset)$ProteinID, "\\|")[, 1]
     matching_external_ids <- rowData(dataset)$External.IDs[blast_hit_protein_ids %in% target_feature]
-    transcript_ids <- sort(unique(unlist(strsplit(matching_external_ids, ","))))
+    
+    if (!only_align_transcript) {
+        transcript_ids <- sort(unique(unlist(strsplit(matching_external_ids, ","))))
+    }
+    else {
+        transcript_ids <- sort(unique(unlist(strsplit(subid, ","))))
+    }
 
     if (pep_seq_col %in% colnames(rowData(dataset))) {
         rowData(dataset)$clean_peps <- get_clean_peptides(dataset, pep_seq_col)

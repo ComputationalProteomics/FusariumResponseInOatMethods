@@ -1,1 +1,3 @@
 supplementary/
+^.*\.Rproj$
+^\.Rproj\.user$
