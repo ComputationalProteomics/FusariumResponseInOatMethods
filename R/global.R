@@ -93,6 +93,15 @@ get_global <- function() {
     
     conditions <- colnames(SummarizedExperiment::colData(datasets[[1]]))
     
+    get_sorted_entries <- function(unsorted_entries) {
+        lapply(unsorted_entries, function(entry) {paste(sort(strsplit(entry, ",")[[1]]), collapse=",")}) %>% unlist()
+    }
+    
+    datasets <- lapply(datasets, function(dataset) {
+        rowData(dataset)$SortedIDs <- get_sorted_entries(rowData(dataset)$External.IDs)
+        dataset
+    })
+    
     global$all_cols <- all_cols
     global$annot_types <- annot_types
     global$base_target <- base_target
