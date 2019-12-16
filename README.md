@@ -46,3 +46,18 @@ Now you should have the unzipped folder `oatomics_inputs` containing all the req
 
 This should open in the browser and you are ready to start inspecting the data.
 
+# Running from Singularity
+
+To build a new Singularity container, you can use the included recipe. Eventually, this will also be hosted at Singularity Hub to omit the need of installing the dependencies, but for now it has to be built locally.
+
+```
+$ singularity build oatomics_container.img Singularity
+```
+
+When setup it can be executed by the following:
+
+```
+$ singularity run oatomics_container.img
+```
+
+This will show you a message that the server has started running at an address (such as `127.0.0.1:3434` with some different last four digits). Navigate to your browser and use this address to start using OatOmics.
