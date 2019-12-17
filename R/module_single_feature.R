@@ -56,8 +56,6 @@ single_feature_panel <- function(input, output, session, table_vars, datasets, q
             table_vars$dataset(),
             c(query_proteins, search_strings),
             input$feature,
-            # input$dimension[1]
-            # input$feature,
             input$subid,
             input$dimension[1],
             only_align_transcript = input$align_only_transcript
