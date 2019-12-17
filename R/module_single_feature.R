@@ -14,8 +14,8 @@ single_feature_panel_ui <- function(id, features, datasets_names, conditions) {
                 wellPanel(
                     style = "float:left;",
                     selectInput(ns("feature"), "Feature", choices=features, selected=features[1], width="300px"),
-                    selectInput(ns("subid"), "SubID", choices=c(), selected=NULL, width="300px"),
                     checkboxInput(ns("align_only_transcript"), "Align only SubID IDs", value = FALSE),
+                    selectInput(ns("subid"), "SubID", choices=c(), selected=NULL, width="300px"),
                     
                     conditionalPanel(
                         sprintf("input['%s'] == 'Contrast'", ns("plot_tabs")),

@@ -103,7 +103,8 @@ about_panel <- function(input, output, session) {
         HTML(
             make_bullets(c(
                 "<b>Feature</b> What TAIR homology ID to show", 
-                "<b>SubID</b> For contrasts, what target transcript to inspect",
+                "<b>Align only SubID IDs</b> Limits the aligned assembly sequences to those specifically matched by the peptide",
+                "<b>SubID</b> For alignment: The the combination of assembly IDs matched by one peptide for which to perform sub alignment (if previous option is specified). For contrasts, what target transcript to inspect",
                 "<b>Dataset</b> The target dataset to inspect (same as in Table tab)",
                 "<b>Split cond.</b> Across over what sample condition to split the dataset (one condition level per x position)",
                 "<b>Only 4d</b>Inspect only samples 4 days after infection (the main comparison inspected in the authors study)"
