@@ -5,6 +5,7 @@
 
 # Hidden
 supplementary/.idea/
+supplementary/
 .snakemake/
 .Rhistory
 
