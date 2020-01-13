@@ -2,17 +2,13 @@
 
 # Installation
 
-After being made public, the most straight forward way should be:
+The easiest way to install the interface is using R:
 
 ```{r}
-> devtools::install_github("Jakob37/FusariumResponseInOatMethods.git")
+> devtools::install_github("ComputationalProteomics/FusariumResponseInOatMethods")
 ```
 
-For now, first retrieve the source code. This can be done in your web browser by navigating to the page https://github.com/Jakob37/FusariumResponseInOatMethods and selecting "Close or download" followed by "Download ZIP", and the unzipping it locally. Or, if you have access to the repository and SSH-keys added to GitHub:
-
-```{r}
-$ git@github.com:Jakob37/FusariumResponseInOatMethods.git
-```
+Alternatively, the source code can be used. This can be done in your web browser by navigating to the page https://github.com/ComputationalProteomics/FusariumResponseInOatMethods and selecting "Close or download" followed by "Download ZIP", and the unzipping it locally.
 
 Now open R and install the package. This requires that you have the R package `devtools` installed. Replace `X` with the current version number.
 
