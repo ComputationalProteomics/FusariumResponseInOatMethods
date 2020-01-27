@@ -58,8 +58,10 @@ From: ubuntu:18.04
     echo 'devtools::install_github("ComputationalProteomics/FusariumResponseInOatMethods")' >> install_oatomics.R
     # Rscript install_oatomics.R
 
-    wget https://lu.box.com/shared/static/8damc11jumvj20ei20jyql3rfjhwa8bd.zip
-    unzip 8damc11jumvj20ei20jyql3rfjhwa8bd.zip
+    wget https://github.com/ComputationalProteomics/FusariumResponseInOatMethods/releases/download/v1.0/oatomics_inputs.zip
+    unzip oatomics_inputs.zip
+    #wget https://lu.box.com/shared/static/8damc11jumvj20ei20jyql3rfjhwa8bd.zip
+    #unzip 8damc11jumvj20ei20jyql3rfjhwa8bd.zip
 
     echo 'OatOmics::launchApp("/oatomics_inputs")' > run.R
 
