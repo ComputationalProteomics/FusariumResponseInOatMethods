@@ -1,27 +1,43 @@
 [![https://www.singularity-hub.org/static/img/hosted-singularity--hub-%23e32929.svg](https://www.singularity-hub.org/static/img/hosted-singularity--hub-%23e32929.svg)](https://singularity-hub.org/collections/3911)
 
-# Installation
+# Running the interface
 
-After being made public, the most straight forward way should be:
+The easiest way to get the interface up and running is by using Singularity. Singularity is a so called container system which allows it to be executed with no need to install any dependencies. The only thing that is required is to have Singularity running on the system. This can be download for free from: https://sylabs.io/singularity
 
-```{r}
-> devtools::install_github("Jakob37/FusariumResponseInOatMethods.git")
+First, download the container from SingularityHub. This can be achieved using the following command:
+
+```
+singularity pull --name FusariumOatInterface shub://Jakob37/FusariumResponseInOatMethods
 ```
 
-For now, first retrieve the source code. This can be done in your web browser by navigating to the page https://github.com/Jakob37/FusariumResponseInOatMethods and selecting "Close or download" followed by "Download ZIP", and the unzipping it locally. Or, if you have access to the repository and SSH-keys added to GitHub:
+Next, start the RShiny interface using the command:
 
-```{r}
-$ git@github.com:Jakob37/FusariumResponseInOatMethods.git
+```
+singularity run FusariumOatInterface 
 ```
 
-Now open R and install the package. This requires that you have the R package `devtools` installed. Replace `X` with the current version number.
+Now you should obtain a message similar to "Listening on http://127.0.0.1:5193". Navigate to this location in the web browser to access the interface.
+
+# Run without Singularity
+
+## Installation
+
+The interface can also be installed and run locally. This required installing the needed dependencies. The easiest way to perform the installation is the following command:
+
+```{r}
+> devtools::install_github("ComputationalProteomics/FusariumResponseInOatMethods")
+```
+
+Alternatively, the source code can be used. This can be done in your web browser by navigating to the page https://github.com/ComputationalProteomics/FusariumResponseInOatMethods and selecting "Close or download" followed by "Download ZIP", and the unzipping it locally.
+
+Now open R and install the package. This requires that you have the R package `devtools` installed. Replace `X.X.X` with the current version number.
 
 ```{r}
 > devtools::build("FusariumResponseInOatMethods/")
-> devtools::install_local("OatOmics_0.9.X.tar.gz")
+> devtools::install_local("OatOmics_X.X.X.tar.gz")
 ```
 
-# Run OatOmics
+## Run OatOmics
 
 OatOmics requires for objects to run.
 
@@ -48,9 +64,9 @@ Now you should have the unzipped folder `oatomics_inputs` containing all the req
 
 This should open in the browser and you are ready to start inspecting the data.
 
-# Running from Singularity
+# Building Singularity container from recipe
 
-To build a new Singularity container, you can use the included recipe. Eventually, this will also be hosted at Singularity Hub to omit the need of installing the dependencies, but for now it has to be built locally.
+To build a new Singularity container, you can use the included recipe.
 
 ```
 $ singularity build oatomics_container.img Singularity
