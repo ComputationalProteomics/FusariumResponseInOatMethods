@@ -75,7 +75,7 @@ table_vis <- function(input, output, session, table_vars) {
     })
 }
 
-table_panel <- function(input, output, session, datasets, open_tab, sample_name="old_sample") {
+table_panel <- function(input, output, session, datasets, open_tab, sample_name="sample_name") {
 
     observeEvent(input$button_show_align, {
         open_tab("Alignment")

@@ -115,6 +115,7 @@ get_global <- function() {
     global$optional_display_cols <- optional_display_cols
     global$optional_stat_fields <- optional_stat_fields
     global$query_proteins <- query_proteins
+    global$first_features <- rowData(selected_dataset)$AnnotIDFirst
     global$search_strings <- search_strings
     global$timepoints <- timepoints
     

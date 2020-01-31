@@ -227,9 +227,9 @@ analyze_positions <- function(align, pattern1, pattern2, min_support=2) {
 # make_proteogenomic_alignment <- function(dataset, search_sequences, target_feature, width, prompt_val=NULL, 
 #                                          protein_id_col="ProteinID", pep_seq_col="Peptide.Sequence") {
 make_proteogenomic_alignment <- function(dataset, search_sequences, target_feature, subid, width, prompt_val=NULL,
-                                         protein_id_col="ProteinID", pep_seq_col="Peptide.Sequence", only_align_transcript=FALSE) {
-    
-    blast_hit_protein_ids <- limma::strsplit2(rowData(dataset)$ProteinID, "\\|")[, 1]
+                                         protein_id_col="AnnotIDFirst", pep_seq_col="Peptide.Sequence", only_align_transcript=FALSE) {
+    # protein_id_col="ProteinID"
+    blast_hit_protein_ids <- limma::strsplit2(rowData(dataset)[[protein_id_col]], "\\|")[, 1]
     matching_external_ids <- rowData(dataset)$External.IDs[blast_hit_protein_ids %in% target_feature]
     
     if (!only_align_transcript) {
@@ -243,7 +243,7 @@ make_proteogenomic_alignment <- function(dataset, search_sequences, target_featu
         rowData(dataset)$clean_peps <- get_clean_peptides(dataset, pep_seq_col)
         ms_peps <- rowData(dataset) %>%
             data.frame() %>%
-            dplyr::filter(.data$ProteinID == target_feature) %>%
+            dplyr::filter(.data[[protein_id_col]] == target_feature) %>%
             dplyr::select(.data$clean_peps) %>%
             unlist() %>%
             Biostrings::AAStringSet()
