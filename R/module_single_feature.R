@@ -13,7 +13,7 @@ single_feature_panel_ui <- function(id, features, datasets_names, conditions) {
                 style = "display:flex; align-items:flex-start",
                 wellPanel(
                     style = "float:left;",
-                    selectInput(ns("feature"), "Feature", choices=features, selected=features[1], width="300px"),
+                    selectInput(ns("feature"), "Choose feature", choices=features, selected=features[1], width="300px"),
                     checkboxInput(ns("align_only_transcript"), "Align only SubID IDs", value = FALSE),
                     selectInput(ns("subid"), "SubID", choices=c(), selected=NULL, width="300px"),
                     
@@ -50,8 +50,11 @@ single_feature_panel <- function(input, output, session, table_vars, datasets, q
     
     align <- reactiveVal(NULL)
     positions <- reactiveVal(NULL)
-    
+
     output$alignment_msar <- msaR::renderMsaR({
+        
+        req(input$feature)
+        
         align(make_proteogenomic_alignment(
             table_vars$dataset(),
             c(query_proteins, search_strings),
@@ -62,31 +65,32 @@ single_feature_panel <- function(input, output, session, table_vars, datasets, q
         ))
         positions(analyze_positions(align(), pattern1="^Ag", pattern2="^Be"))
         message("Identified positions: ", paste(positions(), collapse=", "))
-        
+
         if (!is.null(align())) {
             msaR::msaR(align(), alignmentHeight=500, width=800, colorscheme="clustal2", overviewboxWidth="auto")
         }
     })
-    
+
     output$mutation_status <- renderText({
         paste("Putative mutation sites:", paste(positions(), collapse=", "))
     })
-    
+
     observeEvent(table_vars$target_id(), {
+
         if (length(table_vars$target_id()) != 0) {
             updateSelectInput(session, "feature", selected=table_vars$target_id())
         }
     })
-    
+
     observeEvent(input$feature, {
         df <- rowData(table_vars$dataset()) %>% data.frame()
         entries <- df[grepl(input$feature, df$ProteinID), ]$External.IDs
         sorted_entries <- lapply(entries, function(entry) {paste(sort(strsplit(entry, ",")[[1]]), collapse=",")}) %>% unlist() %>% sort()
-        updateSelectInput(session, "subid", choices = sorted_entries)
+        updateSelectInput(session, "subid", choices = sorted_entries, selected = sorted_entries[1])
     })
-    
+
     output$ContrastPlots <- renderPlot({
-        
+
         do_contrast_plot(
             datasets[[input$contrast_dataset]],
             feature=input$feature,
@@ -101,56 +105,56 @@ single_feature_panel <- function(input, output, session, table_vars, datasets, q
 
 #' @import ggplot2
 do_contrast_plot <- function(dataset, feature, assembly_id, split_condition, protein_id_name="ProteinID", sub_id_name="SortedIDs", only_4d=FALSE, verbose=FALSE) {
-    
+
     verbose <- TRUE
     if (verbose) {
-        message("Visualizing feature: ", feature, " assembly_id: ", assembly_id, 
-                " split_condition: ", split_condition, " protein_id_name: ", protein_id_name, 
+        message("Visualizing feature: ", feature, " assembly_id: ", assembly_id,
+                " split_condition: ", split_condition, " protein_id_name: ", protein_id_name,
                 " sub_id_name: ", sub_id_name)
     }
-    
+
     se_slice <- dataset[which(rowData(dataset)[[sub_id_name]] == assembly_id), ]
-    
+
     if (only_4d) {
         se_slice <- se_slice[, SummarizedExperiment::colData(se_slice)$time == "4d"]
     }
-    
+
     plot_df <- cbind(
         cond=SummarizedExperiment::colData(se_slice)[[split_condition]],
         assay(se_slice) %>% t() %>% data.frame()
-    ) %>% 
+    ) %>%
         tidyr::gather("feature", "value", -.data$cond)
-    
+
     ggplot(
-        plot_df, 
-        aes(x=.data$cond, y=.data$value, color=.data$feature)) + 
-        geom_boxplot() + 
-        geom_point(position=position_jitterdodge(jitter.width=0.05), size=3) + 
+        plot_df,
+        aes(x=.data$cond, y=.data$value, color=.data$feature)) +
+        geom_boxplot() +
+        geom_point(position=position_jitterdodge(jitter.width=0.05), size=3) +
         ggtitle(assembly_id)
 }
 
 parse_dataset <- function(dataset, feature, feature_label, assembly_id=NULL, protein_id_name="ProteinID", sub_id_name="External.IDs") {
-    
+
     parsed_ids <- limma::strsplit2(rowData(dataset)[[protein_id_name]], "\\|")[, 1]
     assembly_ids <- rowData(dataset)[[sub_id_name]]
-    
+
     if (!is.null(assembly_id)) {
         matching_inds <- which(feature == parsed_ids & assembly_id == assembly_ids)
     }
     else {
         matching_inds <- which(feature == parsed_ids)
     }
-    
+
     sub_assay <- assay(dataset)[matching_inds, , drop=FALSE] %>% data.frame()
     sub_assay$feature <- paste0(feature_label, seq_len(nrow(sub_assay)))
     sub_assay$group <- feature_label
-    long_df <- sub_assay %>% 
+    long_df <- sub_assay %>%
         tidyr::gather("sample", "intensity", -"feature", -"group")
     long_df
 }
 
 parse_to_long_df <- function(feature, datasetA, datasetB, assembly_id=NULL) {
-    
+
     longA <- parse_dataset(datasetA, feature, assembly_id=assembly_id, feature_label="A")
     if (!is.null(datasetB)) {
         longB <- parse_dataset(datasetB, feature, assembly_id=assembly_id, feature_label="B")
@@ -159,24 +163,24 @@ parse_to_long_df <- function(feature, datasetA, datasetB, assembly_id=NULL) {
     else {
         long_combined <- longA
     }
-    
-    long_combined    
+
+    long_combined
 }
 
 #' @import ggplot2
 do_intensity_plot <- function(datasetA, feature, assembly_id=NULL, datasetB=NULL) {
-    
+
     long_combined <- parse_to_long_df(feature, datasetA, datasetB, assembly_id=assembly_id)
-    ggplot(long_combined, aes(x=sample, y=.data$intensity, group=feature, color=feature)) + 
-        ggtitle("Intensities") + 
-        geom_point(na.rm=TRUE) + 
+    ggplot(long_combined, aes(x=sample, y=.data$intensity, group=feature, color=feature)) +
+        ggtitle("Intensities") +
+        geom_point(na.rm=TRUE) +
         geom_line(aes(linetype=.data$group))
 }
 
 # Alignment panel
 #' @importFrom rlang .data
 analyze_positions <- function(align, pattern1, pattern2, min_support=2) {
-    
+
     get_site_string <- function(site_mat, pattern1, pattern2) {
         pat1_mat <- site_mat[grepl(pattern1, rownames(site_mat)), , drop=FALSE]
         pat2_mat <- site_mat[grepl(pattern2, rownames(site_mat)), , drop=FALSE]
@@ -184,18 +188,18 @@ analyze_positions <- function(align, pattern1, pattern2, min_support=2) {
         pat2_uniques <- apply(pat2_mat, 2, function(col) { unique(col[col != "-"]) })
         paste(pat1_uniques, pat2_uniques, sep="/")
     }
-    
+
     is_pos_mutated <- function(test_col, pattern1, pattern2) {
         pat1_col <- test_col[grepl(pattern1, names(test_col))]
         pat2_col <- test_col[grepl(pattern2, names(test_col))]
-        
+
         pat1_col_trimmed <- pat1_col[which(pat1_col != "-")]
         pat2_col_trimmed <- pat2_col[which(pat2_col != "-")]
-        
+
         if (length(pat1_col_trimmed) > 0 && length(pat2_col_trimmed) > 0) {
             pat1_unique <- unique(pat1_col_trimmed)
             pat2_unique <- unique(pat2_col_trimmed)
-            
+
             if (length(pat1_unique) == 1 && length(pat2_unique) == 1 && length(pat1_col_trimmed) > min_support && length(pat2_col_trimmed) > min_support) {
                 pat1_unique != pat2_unique
             }
@@ -207,13 +211,13 @@ analyze_positions <- function(align, pattern1, pattern2, min_support=2) {
             FALSE
         }
     }
-    
+
     align_mat <- as.matrix(align)
     mutation_contrast <- apply(align_mat, 2, is_pos_mutated, pattern1=pattern1, pattern2=pattern2)
     indices <- which(mutation_contrast)
-    
+
     if (length(indices) > 0) {
-        
+
         status_string <- get_site_string(align_mat[, indices, drop=FALSE], pattern1, pattern2)
         paste(indices, status_string, sep="-")
     }
@@ -224,21 +228,21 @@ analyze_positions <- function(align, pattern1, pattern2, min_support=2) {
 
 # target_feature corresponds to the BLAST assigned annotation
 # subid corresponds to the specific transcripts which all matched to this BLAST annotation
-# make_proteogenomic_alignment <- function(dataset, search_sequences, target_feature, width, prompt_val=NULL, 
+# make_proteogenomic_alignment <- function(dataset, search_sequences, target_feature, width, prompt_val=NULL,
 #                                          protein_id_col="ProteinID", pep_seq_col="Peptide.Sequence") {
 make_proteogenomic_alignment <- function(dataset, search_sequences, target_feature, subid, width, prompt_val=NULL,
                                          protein_id_col="AnnotIDFirst", pep_seq_col="Peptide.Sequence", only_align_transcript=FALSE) {
     # protein_id_col="ProteinID"
     blast_hit_protein_ids <- limma::strsplit2(rowData(dataset)[[protein_id_col]], "\\|")[, 1]
     matching_external_ids <- rowData(dataset)$External.IDs[blast_hit_protein_ids %in% target_feature]
-    
+
     if (!only_align_transcript) {
         transcript_ids <- sort(unique(unlist(strsplit(matching_external_ids, ","))))
     }
     else {
         transcript_ids <- sort(unique(unlist(strsplit(subid, ","))))
     }
-    
+
     if (pep_seq_col %in% colnames(rowData(dataset))) {
         rowData(dataset)$clean_peps <- get_clean_peptides(dataset, pep_seq_col)
         ms_peps <- rowData(dataset) %>%
@@ -251,7 +255,7 @@ make_proteogenomic_alignment <- function(dataset, search_sequences, target_featu
     else {
         ms_peps <- NULL
     }
-    
+
     target_query_proteins <- search_sequences[transcript_ids]
     seqs <- Biostrings::AAStringSet(c(
         search_sequences[target_feature],
@@ -270,7 +274,7 @@ get_clean_peptides <- function(dataset, peptide_col) {
         pep_seqs <- rowData(dataset)[[peptide_col]]
         pep_seqs_splits <- limma::strsplit2(pep_seqs, ",| ")
         clean_pep_seqs <- pep_seqs_splits[, 1]
-        clean_pep_seqs        
+        clean_pep_seqs
     }
 }
 

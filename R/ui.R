@@ -26,7 +26,6 @@ ui <- function() {
             ),
             single_feature_panel_ui(
                 "SingleFeature", 
-                # features=global$search_strings, 
                 features=global$first_features,
                 datasets_names=names(global$datasets),
                 conditions=global$conditions
