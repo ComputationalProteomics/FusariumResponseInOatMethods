@@ -1,6 +1,8 @@
 BootStrap: docker
 From: ubuntu:18.04
 
+# Build 200204
+
 # Build:  sudo singularity build out.simg Singularity
 # Build:  sudo writable: singularity build --writable out.sim Singularity
 
