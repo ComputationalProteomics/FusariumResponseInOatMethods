@@ -1,12 +1,10 @@
 BootStrap: docker
 From: ubuntu:18.04
 
-# Build 200204
-
 # Build:  sudo singularity build out.simg Singularity
 # Build:  sudo writable: singularity build --writable out.sim Singularity
 
-# Update: 200131 bump
+# Update: 200205 bump
 
 %post
     R_BASE_VERSION="3.6.1"
