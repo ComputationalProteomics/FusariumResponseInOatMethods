@@ -34,6 +34,6 @@ Suggests:
 VignetteBuilder: knitr
 License: Artistic-2.0
 Encoding: UTF-8
-RoxygenNote: 6.1.1
+RoxygenNote: 7.0.2
 URL: ""
 Depends: R (>= 3.6)
