@@ -1,6 +1,6 @@
 Package: OatOmics
 Title: Interactively illustrate proteogenomics oat dataset
-Version: 1.0.0
+Version: 1.0.1
 Maintainer: Jakob Willforss <jakob.willforss@immun.lth.se>
 Author: Jakob Willforss
 Authors@R: c(person("Jakob", "Willforss", email="jakob.willforss@immun.lth.se", role=c("aut", "cre")))
